@@ -3,6 +3,7 @@ import io
 import importlib
 import os
 import sys
+from typing import Any
 
 
 # Custom imports.
@@ -10,17 +11,17 @@ from utl_AutograderError import AutograderError
 
 
 # Constants.
-STRING_LEN_THRESHOLD = 1000
+STRING_LEN_LIMIT = 1000
 MODULE_NAME = ""
 ACCEPTED_DIRS = []
 GENERIC = "The test failed. "
 
 
-# Global lambdas.
-current_func_name = lambda n=0: sys._getframe(n + 1).f_code.co_name
+def current_func_name(n=0):
+    return sys._getframe(n + 1).f_code.co_name
 
 
-def assert_equal(expected, actual):
+def assert_equal(expected:Any, actual:Any) -> None:
     """Checks that two variables are equal. If not, raises an informative error.
 
     :param expected: The expected value.
@@ -29,13 +30,14 @@ def assert_equal(expected, actual):
     each value.
     :return: None
     """
-    # Raise for different expected and actual types.
-    if type(expected) != type(actual):
-        raise AutograderError(f"{GENERIC} Expected and actual types differ.\n"
-                              f"Expected type: {type(expected)}\n"
-                              f"Actual type: {type(actual)}")
     is_str = isinstance(expected, str)
     if expected != actual:
+        # Raise for different expected and actual types.
+        # TODO: gut feeling there is a more sensible way to do this.
+        if type(expected) != type(actual):
+            raise AutograderError(f"{GENERIC} Expected and actual types differ.\n"
+                                  f"Expected type: {type(expected)}\n"
+                                  f"Actual type: {type(actual)}")
         if is_str:
             detail = handle_string(expected, actual)
         # Final error message.
@@ -60,11 +62,9 @@ def handle_string(expected:str, actual:str) -> str:
     expected_len = len(expected)
     actual_len = len(actual)
     # Enforce a length limit in case a student accidentally makes an enormous string.
-    if actual_len < STRING_LEN_THRESHOLD:
-        common_errors = check_for_common_errors(actual)
-        detail = ""
-        detail += GENERIC
-        detail += common_errors if common_errors else ""
+    if actual_len < STRING_LEN_LIMIT:
+        common_errors = check_common_errors(actual)
+        detail = GENERIC + common_errors if common_errors else GENERIC
         # Highlight which character differs.
         if expected_len == actual_len:
             detail += find_incorrect_char(expected, actual)
@@ -74,11 +74,11 @@ def handle_string(expected:str, actual:str) -> str:
                        f"Expected length: {expected_len}\n"
                        f"Actual length: {actual_len}")
         return detail
-    # Raise for long strings.
     else:
+        # Raise for long strings.
         raise AutograderError("The actual string exceeds the maximum allowed "
                               f"length.\nLength is: {actual_len}"
-                              f"\nLimit is: {STRING_LEN_THRESHOLD}",
+                              f"\nLimit is: {STRING_LEN_LIMIT}",
                               expected=expected,
                               actual=actual,
                               context=current_func_name(1))
@@ -97,11 +97,11 @@ def find_incorrect_char(expected:str, actual:str) -> str:
     """
     for idx, char in enumerate(expected):
         if char != actual[idx]:
-            return (f"Character '{char}' at index {idx} of "
-                    f"the expected does not match the actual.")
+            return (f"Character '{actual[idx]}' at index {idx} of "
+                    f"the actual does not match the expected.")
 
 
-def check_for_common_errors(actual:str) -> str | None:
+def check_common_errors(actual:str) -> str | None:
     """Check the actual string for common errors.
 
     :param actual: The actual string.
@@ -110,10 +110,8 @@ def check_for_common_errors(actual:str) -> str | None:
     """
     message = ""
     # Check for double spaces.
-    for idx, char in enumerate(actual):
-        if char == ' ' and actual[idx + 1] == ' ':
-            message += f"There are two spaces at index: {idx}. "
-            break
+    if '  ' in actual:
+        message += f"There are two spaces at index: {actual.index('  ')}. "
     # Check for trailing newlines.
     if actual[-1] == '\n':
         message += "There is a trailing newline ('\\n') at the end of the actual string. "

@@ -17,6 +17,7 @@ ACCEPTED_DIRS = []
 GENERIC = "The test failed. "
 
 
+# Functions.
 def current_func_name(n=0):
     return sys._getframe(n + 1).f_code.co_name
 

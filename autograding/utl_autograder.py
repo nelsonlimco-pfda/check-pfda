@@ -18,7 +18,7 @@ ACCEPTED_DIRS = []
 GENERIC = "The test failed. "
 
 
-def assert_equal(expected:Any, actual:Any) -> None:
+def assert_equal(expected: Any, actual: Any) -> None:
     """Checks that two variables are equal. If not, raises an informative error.
 
     :param expected: The expected value.
@@ -31,7 +31,7 @@ def assert_equal(expected:Any, actual:Any) -> None:
     if expected != actual:
         # Raise for different expected and actual types.
         # TODO: gut feeling there is a more sensible way to do this.
-        if type(expected) != type(actual):
+        if not check_same_type(expected, actual):
             raise AutograderError(f"{GENERIC} Expected and actual types differ.\n"
                                   f"Expected type: {type(expected)}\n"
                                   f"Actual type: {type(actual)}")
@@ -44,7 +44,12 @@ def assert_equal(expected:Any, actual:Any) -> None:
                               context=construct_traceback(3))
 
 
-def handle_string(expected:str, actual:str) -> str:
+def check_same_type(expected, actual):
+    type_expected = type(expected)
+    return isinstance(expected, type_expected) and isinstance(actual, type_expected)
+
+
+def handle_string(expected: str, actual: str) -> str:
     """Handles string comparison for asserting equivalency.
 
     :param expected: The expected string.
@@ -81,7 +86,7 @@ def handle_string(expected:str, actual:str) -> str:
                               context=construct_traceback(3))
 
 
-def find_incorrect_char(expected:str, actual:str) -> str:
+def find_incorrect_char(expected: str, actual: str) -> str:
     """Finds the index of an actual character that does not match
     the expected character.
 
@@ -98,11 +103,12 @@ def find_incorrect_char(expected:str, actual:str) -> str:
                     f"the actual does not match the expected.")
 
 
-def check_common_errors(actual:str) -> str | None:
+def check_common_errors(actual: str) -> str | None:
     """Check the actual string for common errors.
 
     :param actual: The actual string.
-    :return: A string to concatenate to the error if there are common errors, otherwise None.
+    :return: A string to concatenate to the error if there are common errors, otherwise
+    None.
     :rtype: str | None
     """
     message = ""
@@ -115,7 +121,7 @@ def check_common_errors(actual:str) -> str | None:
     return message if not message == "" else None
 
 
-def construct_traceback(n:int=0) -> str:
+def construct_traceback(n: int = 0) -> str:
     """Constructs a traceback message containing the function name, file path, and line
     number.
 

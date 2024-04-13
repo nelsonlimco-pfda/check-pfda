@@ -1,7 +1,7 @@
 # System imports.
-import inspect
-import io
-import importlib
+from inspect import currentframe
+from io import StringIO
+from importlib import import_module
 import os
 import sys
 from typing import Any
@@ -18,6 +18,7 @@ ACCEPTED_DIRS = []
 GENERIC = "The test failed. "
 
 
+# Assertions.
 def assert_equal(expected: Any, actual: Any) -> None:
     """Checks that two variables are equal. If not, raises an informative error.
 
@@ -44,6 +45,18 @@ def assert_equal(expected: Any, actual: Any) -> None:
                               context=construct_traceback(3))
 
 
+def assert_script_exists():
+    """Checks accepted subfolders for the module script."""
+    curr_dir = os.getcwd()
+    for subfolder in ACCEPTED_DIRS:
+        filename = os.path.join(curr_dir, subfolder, f'{MODULE_NAME}.py')
+        print(filename)
+        if os.path.exists(filename):
+            return True
+    return False
+
+
+# Utility functions.
 def is_same_type(expected, actual):
     type_expected = type(expected)
     return isinstance(expected, type_expected) and isinstance(actual, type_expected)
@@ -65,8 +78,7 @@ def handle_string(expected: str, actual: str) -> str:
     actual_len = len(actual)
     # Enforce a length limit in case a student accidentally makes an enormous string.
     if actual_len < STRING_LEN_LIMIT:
-        common_errors = check_common_errors(actual)
-        detail = GENERIC + common_errors if common_errors else GENERIC
+        detail = GENERIC + check_common_errors(actual)
         # Highlight which character differs.
         if expected_len == actual_len:
             detail += find_incorrect_char(expected, actual)
@@ -103,7 +115,7 @@ def find_incorrect_char(expected: str, actual: str) -> str:
                     f"the actual does not match the expected.")
 
 
-def check_common_errors(actual: str) -> str | None:
+def check_common_errors(actual: str) -> str:
     """Check the actual string for common errors.
 
     :param actual: The actual string.
@@ -118,7 +130,7 @@ def check_common_errors(actual: str) -> str | None:
     # Check for trailing newlines.
     if actual[-1] == '\n':
         message += "There is a trailing newline ('\\n') at the end of the actual string. "
-    return message if not message == "" else None
+    return message
 
 
 def construct_traceback(n: int = 0) -> str:
@@ -130,7 +142,7 @@ def construct_traceback(n: int = 0) -> str:
     :return: A traceback string.
     :rtype: str
     """
-    frames = [inspect.currentframe()]
+    frames = [currentframe()]
     if n > 0:
         for i in range(n):
             frames.append(frames[i].f_back)
@@ -139,27 +151,16 @@ def construct_traceback(n: int = 0) -> str:
             f" at line: {frames[n].f_lineno}")
 
 
-def assert_script_exists():
-    """Checks accepted subfolders for the module script."""
-    curr_dir = os.getcwd()
-    for subfolder in ACCEPTED_DIRS:
-        filename = os.path.join(curr_dir, subfolder, f'{MODULE_NAME}.py')
-        print(filename)
-        if os.path.exists(filename):
-            return True
-    return False
-
-
 def reload_module():
     """Reloads the module. Ensures it is reloaded if previously loaded."""
     sys.modules.pop(MODULE_NAME, None)
-    importlib.import_module(name=MODULE_NAME)
+    import_module(name=MODULE_NAME)
 
 
 def patch_input_output(monkeypatch, test_inputs):
     """Patches input() and standard out. Returns the patched standard out."""
     # patches the standard output to catch the output of print()
-    patch_stdout = io.StringIO()
+    patch_stdout = StringIO()
     # Returns a new mock object which undoes any patching done inside
     # the with block on exit to avoid breaking pytest itself.
     with monkeypatch.context() as m:

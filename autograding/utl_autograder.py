@@ -57,7 +57,16 @@ def assert_script_exists():
 
 
 # Utility functions.
-def is_same_type(expected, actual):
+def is_same_type(expected: Any, actual: Any) -> bool:
+    """Evaluates if the two arguments are the same type.
+
+    :param expected: The expected object.
+    :type expected: Any
+    :param actual: The actual object.
+    :type actual: Any
+    :return: If the two objects are the same type.
+    :rtype: bool
+    """
     type_expected = type(expected)
     return isinstance(expected, type_expected) and isinstance(actual, type_expected)
 

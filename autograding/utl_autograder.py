@@ -1,5 +1,6 @@
 # System imports.
 import io
+import inspect
 import importlib
 import os
 import sys
@@ -17,9 +18,21 @@ ACCEPTED_DIRS = []
 GENERIC = "The test failed. "
 
 
-# Functions.
-def current_func_name(n=0):
-    return sys._getframe(n + 1).f_code.co_name
+def construct_traceback(n=0):
+    """Constructs a traceback message containing the function name, file path, and line number.
+
+    :param n: How many code frames back to construct the traceback from.
+    :type n: int
+    :return: A traceback string.
+    :rtype: str
+    """
+    frames = [inspect.currentframe()]
+    if n > 0:
+        for i in range(n):
+            frames.append(frames[i].f_back)
+    return (f"<{frames[n - 1].f_code.co_name}> in file '"
+            f"{frames[n - 1].f_code.co_filename}'"
+            f" at line: {frames[n].f_lineno}")
 
 
 def assert_equal(expected:Any, actual:Any) -> None:
@@ -45,7 +58,7 @@ def assert_equal(expected:Any, actual:Any) -> None:
         raise AutograderError(f"{GENERIC if not is_str else detail}",
                               expected=expected,
                               actual=actual,
-                              context=current_func_name(1))
+                              context=construct_traceback(3))
 
 
 def handle_string(expected:str, actual:str) -> str:

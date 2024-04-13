@@ -1,6 +1,6 @@
 # System imports.
-import io
 import inspect
+import io
 import importlib
 import os
 import sys
@@ -31,7 +31,7 @@ def assert_equal(expected: Any, actual: Any) -> None:
     if expected != actual:
         # Raise for different expected and actual types.
         # TODO: gut feeling there is a more sensible way to do this.
-        if not check_same_type(expected, actual):
+        if not is_same_type(expected, actual):
             raise AutograderError(f"{GENERIC} Expected and actual types differ.\n"
                                   f"Expected type: {type(expected)}\n"
                                   f"Actual type: {type(actual)}")
@@ -44,7 +44,7 @@ def assert_equal(expected: Any, actual: Any) -> None:
                               context=construct_traceback(3))
 
 
-def check_same_type(expected, actual):
+def is_same_type(expected, actual):
     type_expected = type(expected)
     return isinstance(expected, type_expected) and isinstance(actual, type_expected)
 

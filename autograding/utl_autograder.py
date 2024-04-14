@@ -1,5 +1,4 @@
 # System imports.
-from inspect import currentframe
 from io import StringIO
 from importlib import import_module
 import os
@@ -41,8 +40,7 @@ def assert_equal(expected: Any, actual: Any) -> None:
         # Final error message.
         raise AutograderError(f"{GENERIC if not is_str else detail}",
                               expected=expected,
-                              actual=actual,
-                              context=construct_traceback(3))
+                              actual=actual)
 
 
 def assert_script_exists():
@@ -103,8 +101,7 @@ def handle_string(expected: str, actual: str) -> str:
                               f"length.\nLength is: {actual_len}"
                               f"\nLimit is: {STRING_LEN_LIMIT}",
                               expected=expected,
-                              actual=actual,
-                              context=construct_traceback(3))
+                              actual=actual)
 
 
 def find_incorrect_char(expected: str, actual: str) -> str:
@@ -140,24 +137,6 @@ def check_common_errors(actual: str) -> str:
     if actual[-1] == '\n':
         message += "There is a trailing newline ('\\n') at the end of the actual string. "
     return message
-
-
-def construct_traceback(n: int = 0) -> str:
-    """Constructs a traceback message containing the function name, file path, and line
-    number.
-
-    :param n: How many code frames back to construct the traceback from.
-    :type n: int
-    :return: A traceback string.
-    :rtype: str
-    """
-    frames = [currentframe()]
-    if n > 0:
-        for i in range(n):
-            frames.append(frames[i].f_back)
-    return (f"<{frames[n - 1].f_code.co_name}> in file '"
-            f"{frames[n - 1].f_code.co_filename}'"
-            f" at line: {frames[n].f_lineno}")
 
 
 def reload_module():

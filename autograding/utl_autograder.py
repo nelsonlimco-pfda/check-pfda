@@ -54,6 +54,24 @@ def assert_script_exists():
     return False
 
 
+def generate_temp_file(filename:str, tmpdir:str, contents:Any) -> str:
+    """Generates a temporary file to test with.
+
+    :param filename: The name of the temporary file.
+    :type filename: str
+    :param tmpdir: The path of the directory to store the temporary file.
+    :type tmpdir: str
+    :param contents: The contents to write to the temporary file.
+    :type contents: Any
+    :return: The path to the temporary file.
+    :rtype: str
+    """
+    filepath = os.path.join(tmpdir, filename)
+    with open(filepath, 'w') as f:
+        f.write(contents)
+    return filepath
+
+
 # Utility functions.
 def is_same_type(expected: Any, actual: Any) -> bool:
     """Evaluates if the two arguments are the same type.

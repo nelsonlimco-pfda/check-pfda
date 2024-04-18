@@ -7,7 +7,7 @@ from typing import Any
 
 
 # Custom imports.
-from AutograderError import AutograderError
+from utils.AutograderError import AutograderError
 
 
 # Constants.
@@ -35,12 +35,9 @@ def assert_equal(expected: Any, actual: Any) -> None:
             raise AutograderError(f"{GENERIC} Expected and actual types differ.\n"
                                   f"Expected type: {type(expected)}\n"
                                   f"Actual type: {type(actual)}")
-        if is_str:
-            detail = handle_string(expected, actual)
         # Final error message.
-        raise AutograderError(f"{GENERIC if not is_str else detail}",
-                              expected=expected,
-                              actual=actual)
+        msg = GENERIC if not is_str else handle_string(expected, actual)
+        raise AutograderError(msg, expected=expected, actual=actual)
 
 
 def assert_script_exists():

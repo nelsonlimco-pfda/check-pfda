@@ -37,7 +37,7 @@ def assert_equal(expected: Any, actual: Any) -> None:
                                   f"Actual type: {type(actual)}")
         # Final error message.
         raise AutograderError(f"""{GENERIC if not is_str else 
-                                       handle_string(expected, actual)}""",
+                              handle_string(expected, actual)}""",
                               expected=expected,
                               actual=actual)
 
@@ -82,8 +82,7 @@ def is_same_type(expected: Any, actual: Any) -> bool:
     :return: If the two objects are the same type.
     :rtype: bool
     """
-    type_expected = type(expected)
-    return isinstance(expected, type_expected) and isinstance(actual, type_expected)
+    return isinstance(actual, type(expected))
 
 
 def handle_string(expected: str, actual: str) -> str:

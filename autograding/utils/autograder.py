@@ -94,8 +94,7 @@ def handle_string(expected: str, actual: str) -> str:
     :type expected: str
     :param actual: The actual string.
     :type actual: str
-    :raises AutograderError: If strings lengths are different or the actual  
-    string is larger than the threshold.
+    :raises AutograderError: If the actual string is larger than the limit.
     :return: An error message.
     :rtype: str
     """

@@ -36,8 +36,10 @@ def assert_equal(expected: Any, actual: Any) -> None:
                                   f"Expected type: {type(expected)}\n"
                                   f"Actual type: {type(actual)}")
         # Final error message.
-        msg = GENERIC if not is_str else handle_string(expected, actual)
-        raise AutograderError(msg, expected=expected, actual=actual)
+        raise AutograderError(f"""{GENERIC if not is_str else 
+                                       handle_string(expected, actual)}""",
+                              expected=expected,
+                              actual=actual)
 
 
 def assert_script_exists():

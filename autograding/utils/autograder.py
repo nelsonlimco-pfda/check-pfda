@@ -144,7 +144,7 @@ def check_common_errors(actual: str) -> str | None:
     if '  ' in actual:
         message += f"There are two spaces at index: {actual.index('  ')}. "
     # Check for trailing newlines.
-    if actual[-1] == '\n':
+    if actual.endswith('\n'):
         message += "There is a trailing newline ('\\n') at the end of the actual string. "
     return message if message else None
 

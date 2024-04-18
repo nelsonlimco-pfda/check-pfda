@@ -1,4 +1,4 @@
-# System imports.
+# System libraries.
 from io import StringIO
 from importlib import import_module
 import os
@@ -7,7 +7,7 @@ from typing import Any
 
 
 # Custom imports.
-from utl_AutograderError import AutograderError
+from AutograderError import AutograderError
 
 
 # Constants.
@@ -54,7 +54,8 @@ def assert_script_exists():
     return False
 
 
-def generate_temp_file(filename:str, tmpdir:str, contents:Any) -> str:
+# Utility functions.
+def generate_temp_file(filename: str, tmpdir: str, contents: Any) -> str:
     """Generates a temporary file to test with.
 
     :param filename: The name of the temporary file.
@@ -72,7 +73,6 @@ def generate_temp_file(filename:str, tmpdir:str, contents:Any) -> str:
     return filepath
 
 
-# Utility functions.
 def is_same_type(expected: Any, actual: Any) -> bool:
     """Evaluates if the two arguments are the same type.
 

@@ -92,7 +92,6 @@ def handle_string(expected: str, actual: str) -> str:
     :type expected: str
     :param actual: The actual string.
     :type actual: str
-    :raises AutograderError: If the actual string is larger than the limit.
     :return: An error message.
     :rtype: str
     """
@@ -100,7 +99,8 @@ def handle_string(expected: str, actual: str) -> str:
     actual_len = len(actual)
     # Enforce a length limit in case a student accidentally makes an enormous string.
     if actual_len < STRING_LEN_LIMIT:
-        detail = GENERIC + check_common_errors(actual)
+        common_errors = check_common_errors(actual)
+        detail = GENERIC + common_errors if common_errors else GENERIC
         # Highlight which character differs.
         if expected_len == actual_len:
             detail += find_incorrect_char(expected, actual)
@@ -110,13 +110,8 @@ def handle_string(expected: str, actual: str) -> str:
                        f"Expected length: {expected_len}\n"
                        f"Actual length: {actual_len}")
         return detail
-    else:
-        # Raise for long strings.
-        raise AutograderError("The actual string exceeds the maximum allowed "
-                              f"length.\nLength is: {actual_len}"
-                              f"\nLimit is: {STRING_LEN_LIMIT}",
-                              expected=expected,
-                              actual=actual)
+    return (f"The actual string exceeds the maximum allowed length.\n"
+            f"Actual length is: {actual_len}\nLimit is: {STRING_LEN_LIMIT}")
 
 
 def find_incorrect_char(expected: str, actual: str) -> str:
@@ -136,7 +131,7 @@ def find_incorrect_char(expected: str, actual: str) -> str:
                     f"the actual does not match the expected.")
 
 
-def check_common_errors(actual: str) -> str:
+def check_common_errors(actual: str) -> str | None:
     """Check the actual string for common errors.
 
     :param actual: The actual string.
@@ -151,7 +146,7 @@ def check_common_errors(actual: str) -> str:
     # Check for trailing newlines.
     if actual[-1] == '\n':
         message += "There is a trailing newline ('\\n') at the end of the actual string. "
-    return message
+    return message if message else None
 
 
 def reload_module():

@@ -17,7 +17,6 @@ from utils.AutograderError import AutograderError
 
 # Constants.
 STRING_LEN_LIMIT = 1000
-MODULE_NAME = ""
 GENERIC = "The test failed. "
 
 
@@ -46,16 +45,18 @@ def assert_equal(expected: Any, actual: Any) -> None:
                               actual=actual)
 
 
-def assert_script_exists(accepted_dirs: list) -> None:
+def assert_script_exists(module_name: str, accepted_dirs: list) -> None:
     """Checks accepted subfolders for the module script.
 
+    :param module_name: The name of the module to check.
+    :type module_name: str
     :param accepted_dirs: The accepted subfolders for the script.
     :type accepted_dirs: list
     :raises AutograderError: If the script does not exist.
     :return: None"""
     curr_dir = os.getcwd()
-    for subfolder in ACCEPTED_DIRS:
-        filename = os.path.join(curr_dir, subfolder, f'{MODULE_NAME}.py')
+    for subfolder in accepted_dirs:
+        filename = os.path.join(curr_dir, subfolder, f'{module_name}.py')
         print(filename)
         if os.path.exists(filename):
             return None
@@ -161,12 +162,14 @@ def check_common_errors(actual: str) -> str | None:
     return message if message else None
 
 
-def reload_module() -> None:
+def reload_module(module_name: str) -> None:
     """Reloads the module. Ensures it is reloaded if previously loaded.
 
+    :param module_name: The name of the module to reload.
+    :type module_name: str
     :return: None"""
-    sys.modules.pop(MODULE_NAME, None)
-    import_module(name=MODULE_NAME)
+    sys.modules.pop(module_name, None)
+    import_module(name=module_name)
 
 
 def patch_input_output(monkeypatch: Any, test_inputs: list) -> StringIO:

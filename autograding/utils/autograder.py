@@ -6,6 +6,10 @@ import sys
 from typing import Any
 
 
+# PyPi libraries.
+import pytest
+
+
 # Custom imports.
 from utils.AutograderError import AutograderError
 
@@ -60,13 +64,13 @@ def assert_script_exists() -> None:
 
 
 # Utility functions.
-def generate_temp_file(filename: str, tmpdir: str, contents: Any) -> str:
+def generate_temp_file(filename: str, tmpdir: Any, contents: Any) -> str:
     """Generates a temporary file to test with.
 
     :param filename: The name of the temporary file.
     :type filename: str
-    :param tmpdir: The path of the directory to store the temporary file.
-    :type tmpdir: str
+    :param tmpdir: Pytest's tmpdir fixture.
+    :type tmpdir: Any
     :param contents: The contents to write to the temporary file.
     :type contents: Any
     :return: The path to the temporary file.

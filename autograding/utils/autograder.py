@@ -42,15 +42,21 @@ def assert_equal(expected: Any, actual: Any) -> None:
                               actual=actual)
 
 
-def assert_script_exists():
-    """Checks accepted subfolders for the module script."""
+def assert_script_exists() -> None:
+    """Checks accepted subfolders for the module script.
+
+    :raises AutograderError: If the script does not exist.
+    :return: None"""
     curr_dir = os.getcwd()
     for subfolder in ACCEPTED_DIRS:
         filename = os.path.join(curr_dir, subfolder, f'{MODULE_NAME}.py')
         print(filename)
         if os.path.exists(filename):
-            return True
-    return False
+            return None
+    raise AutograderError("The script does not exist. "
+                          "The most likely cause is that the current working directory "
+                          "is not `src`. Make sure that you ran `cd src` in the "
+                          "terminal before you executed the script.\n")
 
 
 # Utility functions.
@@ -100,16 +106,16 @@ def handle_string(expected: str, actual: str) -> str:
     # Enforce a length limit in case a student accidentally makes an enormous string.
     if actual_len < STRING_LEN_LIMIT:
         common_errors = check_common_errors(actual)
-        detail = GENERIC + common_errors if common_errors else GENERIC
+        detailed_error_msg = GENERIC + common_errors if common_errors else GENERIC
         # Highlight which character differs.
         if expected_len == actual_len:
-            detail += find_incorrect_char(expected, actual)
+            detailed_error_msg += find_incorrect_char(expected, actual)
         # Else highlight the length difference.
         else:
-            detail += (f"The expected and actual string lengths are different.\n"
-                       f"Expected length: {expected_len}\n"
-                       f"Actual length: {actual_len}")
-        return detail
+            detailed_error_msg += (f"The expected and actual string lengths are "
+                                   f"different.\nExpected length: {expected_len}\n"
+                                   f"Actual length: {actual_len}")
+        return detailed_error_msg
     return (f"The actual string exceeds the maximum allowed length.\n"
             f"Actual length is: {actual_len}\nLimit is: {STRING_LEN_LIMIT}")
 
@@ -149,14 +155,23 @@ def check_common_errors(actual: str) -> str | None:
     return message if message else None
 
 
-def reload_module():
-    """Reloads the module. Ensures it is reloaded if previously loaded."""
+def reload_module() -> None:
+    """Reloads the module. Ensures it is reloaded if previously loaded.
+
+    :return: None"""
     sys.modules.pop(MODULE_NAME, None)
     import_module(name=MODULE_NAME)
 
 
-def patch_input_output(monkeypatch, test_inputs):
-    """Patches input() and standard out. Returns the patched standard out."""
+def patch_input_output(monkeypatch: Any, test_inputs: list) -> StringIO:
+    """Patches input() and standard out.
+
+    :param monkeypatch: Pytest's monkeypatch fixture.
+    :type monkeypatch: Monkeypatch
+    :param test_inputs: The inputs to test known outputs against.
+    :type test_inputs: list
+    :return: The patched standard out.
+    :rtype: StringIO"""
     # patches the standard output to catch the output of print()
     patch_stdout = StringIO()
     # Returns a new mock object which undoes any patching done inside

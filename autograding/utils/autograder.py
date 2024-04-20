@@ -2,6 +2,7 @@
 from io import StringIO
 from importlib import import_module
 import os
+import py.path
 import sys
 from typing import Any
 
@@ -17,7 +18,6 @@ from utils.AutograderError import AutograderError
 # Constants.
 STRING_LEN_LIMIT = 1000
 MODULE_NAME = ""
-ACCEPTED_DIRS = []
 GENERIC = "The test failed. "
 
 
@@ -46,9 +46,11 @@ def assert_equal(expected: Any, actual: Any) -> None:
                               actual=actual)
 
 
-def assert_script_exists() -> None:
+def assert_script_exists(accepted_dirs: list) -> None:
     """Checks accepted subfolders for the module script.
 
+    :param accepted_dirs: The accepted subfolders for the script.
+    :type accepted_dirs: list
     :raises AutograderError: If the script does not exist.
     :return: None"""
     curr_dir = os.getcwd()
@@ -64,13 +66,13 @@ def assert_script_exists() -> None:
 
 
 # Utility functions.
-def generate_temp_file(filename: str, tmpdir: Any, contents: Any) -> str:
+def generate_temp_file(filename: str, tmpdir: py.path.local, contents: Any) -> str:
     """Generates a temporary file to test with.
 
     :param filename: The name of the temporary file.
     :type filename: str
     :param tmpdir: Pytest's tmpdir fixture.
-    :type tmpdir: Any
+    :type tmpdir: py.path.local
     :param contents: The contents to write to the temporary file.
     :type contents: Any
     :return: The path to the temporary file.

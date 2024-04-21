@@ -172,13 +172,15 @@ def reload_module(module_name: str) -> None:
     import_module(name=module_name)
 
 
-def patch_input_output(monkeypatch: Any, test_inputs: list) -> StringIO:
+def patch_input_output(monkeypatch: Any, test_inputs: list, module_name: str) -> StringIO:
     """Patches input() and standard out.
 
     :param monkeypatch: Pytest's monkeypatch fixture.
-    :type monkeypatch: Monkeypatch
+    :type monkeypatch: Monkeypatch #TODO: doesn't look like it's possible to type hint?
     :param test_inputs: The inputs to test known outputs against.
     :type test_inputs: list
+    :param module_name: The name of the module to test.
+    :type module_name: str
     :return: The patched standard out.
     :rtype: StringIO"""
     # patches the standard output to catch the output of print()
@@ -189,5 +191,5 @@ def patch_input_output(monkeypatch: Any, test_inputs: list) -> StringIO:
         # patches the input()
         m.setattr('builtins.input', lambda _: test_inputs.pop(0))
         m.setattr('sys.stdout', patch_stdout)
-        reload_module()
+        reload_module(module_name)
     return patch_stdout

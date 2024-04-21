@@ -159,7 +159,7 @@ def check_common_errors(actual: str) -> str | None:
     # Check for trailing newlines.
     if actual.endswith('\n'):
         message += "There is a trailing newline ('\\n') at the end of the actual string. "
-    return message if message else None
+    return message or None
 
 
 def reload_module(module_name: str) -> None:

@@ -35,9 +35,11 @@ def assert_equal(expected: Any, actual: Any) -> None:
         # Raise for different expected and actual types.
         # TODO: gut feeling there is a more sensible way to do this.
         if not is_same_type(expected, actual):
-            raise AutograderError(f"{GENERIC} Expected and actual types differ.\n"
-                                  f"Expected type: {type(expected)}\n"
-                                  f"Actual type: {type(actual)}")
+            raise AutograderError(f"{GENERIC}Expected and actual types differ.\n"
+                                  f"Expected value: {expected} of type:"
+                                  f" {format_type(str(type(expected)))}\n"
+                                  f"Actual value: {actual} of type: "
+                                  f"{format_type(str(type(actual)))}")
         # Final error message.
         raise AutograderError(f"""{GENERIC if not is_str else 
                               handle_string(expected, actual)}""",
@@ -67,6 +69,10 @@ def assert_script_exists(module_name: str, accepted_dirs: list) -> None:
 
 
 # Utility functions.
+def format_type(var_type: str) -> str:
+    return var_type.split("'")[1::2][0]
+
+
 def generate_temp_file(filename: str, tmpdir: py.path.local, contents: Any) -> str:
     """Generates a temporary file to test with.
 

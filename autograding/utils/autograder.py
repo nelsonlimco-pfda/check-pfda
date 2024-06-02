@@ -35,11 +35,10 @@ def assert_equal(expected: Any, actual: Any) -> None:
         # Raise for different expected and actual types.
         # TODO: gut feeling there is a more sensible way to do this.
         if not is_same_type(expected, actual):
-            raise AutograderError(f"{GENERIC}Expected and actual types differ.\n"
-                                  f"Expected value: {expected} of type:"
-                                  f" {format_type(str(type(expected)))}\n"
-                                  f"Actual value: {actual} of type: "
-                                  f"{format_type(str(type(actual)))}")
+            raise AutograderError(f"{GENERIC}Expected and actual types differ. "
+                                  f"Expected value: {expected} of type: "
+                                  f"{format_type(str(type(expected)))}, but got value: "
+                                  f"{actual} of type: {format_type(str(type(actual)))}")
         # Final error message.
         raise AutograderError(f"""{GENERIC if not is_str else 
                               handle_string(expected, actual)}""",
@@ -126,8 +125,9 @@ def handle_string(expected: str, actual: str) -> str:
         # Else highlight the length difference.
         else:
             detailed_error_msg += (f"The expected and actual string lengths are "
-                                   f"different.\nExpected length: {expected_len}\n"
-                                   f"Actual length: {actual_len}")
+                                   f"different. Expected length: {expected_len}, but "
+                                   f"got length: {actual_len}. Expected {repr(expected)} "
+                                   f"but got: {repr(actual)}")
         return detailed_error_msg
     return (f"The actual string exceeds the maximum allowed length.\n"
             f"Actual length is: {actual_len}\nLimit is: {STRING_LEN_LIMIT}")
@@ -147,7 +147,8 @@ def find_incorrect_char(expected: str, actual: str) -> str:
     for idx, char in enumerate(expected):
         if char != actual[idx]:
             return (f"Character '{actual[idx]}' at index {idx} of "
-                    f"the actual does not match the expected.")
+                    f"the actual does not match the expected. Expected {repr(expected)} "
+                    f"but got {repr(actual)}")
 
 
 def check_common_errors(actual: str) -> str | None:

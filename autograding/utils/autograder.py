@@ -11,13 +11,24 @@ from typing import Any
 import pytest
 
 
-# Custom imports.
-from utils.AutograderError import AutograderError
+class AutograderError(Exception):
+    def __init__(self, message, expected=None, actual=None, extra_info=None):
+        super().__init__(message)
+        self.expected = expected
+        self.actual = actual
+        self.context = extra_info
+
+    def __str__(self):
+        error_msg = super().__str__()
+        if self.actual or self.expected:
+            error_msg += f"\nExpected: {repr(self.expected)}\nActual: {repr(self.actual)}"
+        if self.context:
+            error_msg += f"\nContext: {self.context}"
+        return error_msg
 
 
 # Constants.
 STRING_LEN_LIMIT = 1000
-GENERIC = "The test failed. "
 
 
 # Assertions.
@@ -31,17 +42,15 @@ def assert_equal(expected: Any, actual: Any) -> None:
     :return: None
     """
     is_str = isinstance(expected, str)
+    # Raise for different expected and actual types.
+    if is_different_type(expected, actual):
+        raise AutograderError(f"Expected and actual types differ. "
+                              f"Expected value: {expected} of type: "
+                              f"{format_type(str(type(expected)))}, but got value: "
+                              f"{actual} of type: {format_type(str(type(actual)))}")
     if expected != actual:
-        # Raise for different expected and actual types.
-        # TODO: gut feeling there is a more sensible way to do this.
-        if not is_same_type(expected, actual):
-            raise AutograderError(f"{GENERIC}Expected and actual types differ. "
-                                  f"Expected value: {expected} of type: "
-                                  f"{format_type(str(type(expected)))}, but got value: "
-                                  f"{actual} of type: {format_type(str(type(actual)))}")
-        # Final error message.
-        raise AutograderError(f"""{GENERIC if not is_str else 
-                              handle_string(expected, actual)}""",
+        raise AutograderError(f"""
+        {build_string_error(expected, actual) if is_str else "Error."}""",
                               expected=expected,
                               actual=actual)
 
@@ -90,7 +99,7 @@ def generate_temp_file(filename: str, tmpdir: py.path.local, contents: Any) -> s
     return filepath
 
 
-def is_same_type(expected: Any, actual: Any) -> bool:
+def is_different_type(expected: Any, actual: Any) -> bool:
     """Evaluates if the two arguments are the same type.
 
     :param expected: The expected object.
@@ -100,10 +109,10 @@ def is_same_type(expected: Any, actual: Any) -> bool:
     :return: If the two objects are the same type.
     :rtype: bool
     """
-    return isinstance(actual, type(expected))
+    return not isinstance(actual, type(expected))
 
 
-def handle_string(expected: str, actual: str) -> str:
+def build_string_error(expected: str, actual: str) -> str:
     """Handles string comparison for asserting equivalency.
 
     :param expected: The expected string.
@@ -116,25 +125,28 @@ def handle_string(expected: str, actual: str) -> str:
     expected_len = len(expected)
     actual_len = len(actual)
     # Enforce a length limit in case a student accidentally makes an enormous string.
-    if actual_len < STRING_LEN_LIMIT:
-        common_errors = check_common_errors(actual)
-        detailed_error_msg = GENERIC + common_errors if common_errors else GENERIC
-        # Highlight which character differs.
-        if expected_len == actual_len:
-            detailed_error_msg += find_incorrect_char(expected, actual)
-        # Else highlight the length difference.
-        else:
-            detailed_error_msg += (f"The expected and actual string lengths are "
-                                   f"different. Expected length: {expected_len}, but "
-                                   f"got length: {actual_len}. Expected {repr(expected)} "
-                                   f"but got: {repr(actual)}")
-        return detailed_error_msg
-    return (f"The actual string exceeds the maximum allowed length.\n"
+    if actual_len > STRING_LEN_LIMIT:
+        return (f"The actual string exceeds the maximum allowed length.\n"
             f"Actual length is: {actual_len}\nLimit is: {STRING_LEN_LIMIT}")
+    error_msg = ""
+    if check_double_spaces(actual):
+        error_msg += find_double_spaces(actual)
+    if check_trailing_newline(actual):
+        error_msg += find_trailing_newline(actual)
+    # Highlight which character differs.
+    if expected_len == actual_len:
+        error_msg += find_incorrect_char(expected, actual)
+    # Else highlight the length difference.
+    else:
+        error_msg += (f"The expected and actual string lengths are "
+                               f"different. Expected length: {expected_len}, but "
+                               f"got length: {actual_len}. Expected {repr(expected)} "
+                               f"but got: {repr(actual)}")
+    return error_msg
 
 
 def find_incorrect_char(expected: str, actual: str) -> str:
-    """Finds the index of an actual character that does not match
+    """Finds the index of the first actual character that does not match
     the expected character.
 
     :param expected: The expected string.
@@ -144,14 +156,33 @@ def find_incorrect_char(expected: str, actual: str) -> str:
     :return: A string containing the incorrect character and its index.
     :rtype: str
     """
-    for idx, char in enumerate(expected):
-        if char != actual[idx]:
+    for idx, expected_char in enumerate(expected):
+        actual_char = actual[idx]
+        if expected_char != actual_char:
             return (f"Character '{actual[idx]}' at index {idx} of "
-                    f"the actual does not match the expected. Expected {repr(expected)} "
-                    f"but got {repr(actual)}")
+                    f"the actual is the first that does not match. Expected"
+                    f" {repr(expected)} but got {repr(actual)}")
 
 
-def check_common_errors(actual: str) -> str | None:
+def check_trailing_newline(actual: str) -> str | None:
+    """Check the actual string for common errors.
+
+    :param actual: The actual string.
+    :return: A string to concatenate to the error if there are common errors, otherwise
+    None.
+    :rtype: str | None
+    """
+    if actual.endswith('\n'):
+        return True
+    return False
+
+
+def find_trailing_newline(actual: str) -> str:
+    message = "There is a trailing newline ('\\n') at the end of the actual string. "
+    return message
+
+
+def check_double_spaces(actual: str) -> bool:
     """Check the actual string for common errors.
 
     :param actual: The actual string.
@@ -162,12 +193,12 @@ def check_common_errors(actual: str) -> str | None:
     message = ""
     # Check for double spaces.
     if '  ' in actual:
-        message += f"There are two spaces at index: {actual.index('  ')}. "
-    # Check for trailing newlines.
-    if actual.endswith('\n'):
-        message += "There is a trailing newline ('\\n') at the end of the actual string. "
-    return message or None
+        return True
+    return False
 
+def find_double_spaces(actual: str) -> str:
+    message = f"There are two spaces at index: {actual.index('  ')}. "
+    return message
 
 def reload_module(module_name: str) -> None:
     """Reloads the module. Ensures it is reloaded if previously loaded.

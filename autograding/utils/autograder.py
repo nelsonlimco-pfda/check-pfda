@@ -136,7 +136,8 @@ def build_string_error(expected: str, actual: str) -> str:
     if check_double_spaces(actual):
         error_msg += find_double_spaces(actual)
     if check_trailing_newline(actual):
-        error_msg += find_trailing_newline(actual)
+        error_msg += ("There is a trailing newline ('\\n') at the end of the actual "
+                      "string. ")
     # Highlight which character differs.
     if expected_len == actual_len:
         error_msg += find_incorrect_char(expected, actual)
@@ -180,14 +181,6 @@ def check_trailing_newline(actual: str) -> str | None:
         return True
     return False
 
-
-def find_trailing_newline(actual: str) -> str:
-    """Returns a string with the location of the newline.
-
-    :param actual: The actual string.
-    :return: An error string with the location of the newline.
-    """
-    return "There is a trailing newline ('\\n') at the end of the actual string. "
 
 
 def check_double_spaces(actual: str) -> bool:

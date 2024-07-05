@@ -78,6 +78,10 @@ def assert_script_exists(module_name: str, accepted_dirs: list) -> None:
 
 # Utility functions.
 def format_type(var_type: str) -> str:
+    """Formats repr class type.
+    :param var_type: The type of a variable.
+    :return: The formatted type.
+    """
     return var_type.split("'")[1::2][0]
 
 
@@ -178,8 +182,12 @@ def check_trailing_newline(actual: str) -> str | None:
 
 
 def find_trailing_newline(actual: str) -> str:
-    message = "There is a trailing newline ('\\n') at the end of the actual string. "
-    return message
+    """Returns a string with the location of the newline.
+
+    :param actual: The actual string.
+    :return: An error string with the location of the newline.
+    """
+    return "There is a trailing newline ('\\n') at the end of the actual string. "
 
 
 def check_double_spaces(actual: str) -> bool:
@@ -197,8 +205,13 @@ def check_double_spaces(actual: str) -> bool:
     return False
 
 def find_double_spaces(actual: str) -> str:
-    message = f"There are two spaces at index: {actual.index('  ')}. "
-    return message
+    """Finds the location of the double spaces in the actual string and
+    builds an error string.
+
+    :param actual: The actual string.
+    :return: An error message containing the location of the double spaces in the actual.
+    """
+    return f"There are two spaces at index: {actual.index('  ')}. "
 
 def reload_module(module_name: str) -> None:
     """Reloads the module. Ensures it is reloaded if previously loaded.

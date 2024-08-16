@@ -1,2 +1,7 @@
-# tools
-A repository to house tools written for PFDA.
+![Course banner.](docs/assets/banner_w_1920.png)
+# PFDA Tools Suite
+Tools written for Programming for Digital Artists.
+
+---
+
+# 

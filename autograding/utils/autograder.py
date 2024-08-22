@@ -21,7 +21,8 @@ class AutograderError(Exception):
     def __str__(self):
         error_msg = super().__str__()
         if self.actual or self.expected:
-            error_msg += f"\nExpected: {repr(self.expected)}\nActual: {repr(self.actual)}"
+            error_msg += (f"\nExpected: {repr(self.expected)}\nActual  :"
+                          f" {repr(self.actual)}")
         if self.context:
             error_msg += f"\nContext: {self.context}"
         return error_msg
@@ -133,9 +134,9 @@ def build_string_error(expected: str, actual: str) -> str:
         return (f"The actual string exceeds the maximum allowed length.\n"
             f"Actual length is: {actual_len}\nLimit is: {STRING_LEN_LIMIT}")
     error_msg = ""
-    if check_double_spaces(actual):
+    if check_double_spaces(actual) and not check_double_spaces(expected):
         error_msg += find_double_spaces(actual)
-    if check_trailing_newline(actual):
+    if check_trailing_newline(actual) and not check_trailing_newline(expected):
         error_msg += ("There is a trailing newline ('\\n') at the end of the actual "
                       "string. ")
     # Highlight which character differs.
@@ -145,8 +146,7 @@ def build_string_error(expected: str, actual: str) -> str:
     else:
         error_msg += (f"The expected and actual string lengths are "
                                f"different. Expected length: {expected_len}, but "
-                               f"got length: {actual_len}. Expected {repr(expected)} "
-                               f"but got: {repr(actual)}")
+                               f"got length: {actual_len}.")
     return error_msg
 
 
@@ -165,8 +165,7 @@ def find_incorrect_char(expected: str, actual: str) -> str:
         actual_char = actual[idx]
         if expected_char != actual_char:
             return (f"Character '{actual[idx]}' at index {idx} of "
-                    f"the actual is the first that does not match. Expected"
-                    f" {repr(expected)} but got {repr(actual)}")
+                    f"the actual is the first that does not match.")
 
 
 def check_trailing_newline(actual: str) -> str | None:
@@ -180,7 +179,6 @@ def check_trailing_newline(actual: str) -> str | None:
     if actual.endswith('\n'):
         return True
     return False
-
 
 
 def check_double_spaces(actual: str) -> bool:
@@ -197,6 +195,7 @@ def check_double_spaces(actual: str) -> bool:
         return True
     return False
 
+
 def find_double_spaces(actual: str) -> str:
     """Finds the location of the double spaces in the actual string and
     builds an error string.
@@ -205,6 +204,7 @@ def find_double_spaces(actual: str) -> str:
     :return: An error message containing the location of the double spaces in the actual.
     """
     return f"There are two spaces at index: {actual.index('  ')}. "
+
 
 def reload_module(module_name: str) -> None:
     """Reloads the module. Ensures it is reloaded if previously loaded.

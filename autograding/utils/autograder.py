@@ -21,7 +21,7 @@ class AutograderError(Exception):
     def __str__(self):
         error_msg = super().__str__()
         if self.actual or self.expected:
-            error_msg += f"\nExpected: {repr(self.expected)}\nActual: {repr(self.actual)}"
+            error_msg += f"\nExpected: {repr(self.expected)}\nActual  : {repr(self.actual)}"
         if self.context:
             error_msg += f"\nContext: {self.context}"
         return error_msg
@@ -135,7 +135,7 @@ def build_string_error(expected: str, actual: str) -> str:
     error_msg = ""
     if check_double_spaces(actual):
         error_msg += find_double_spaces(actual)
-    if check_trailing_newline(actual):
+    if check_trailing_newline(expected, actual):
         error_msg += ("There is a trailing newline ('\\n') at the end of the actual "
                       "string. ")
     # Highlight which character differs.
@@ -169,7 +169,7 @@ def find_incorrect_char(expected: str, actual: str) -> str:
                     f" {repr(expected)} but got {repr(actual)}")
 
 
-def check_trailing_newline(actual: str) -> str | None:
+def check_trailing_newline(expected: str, actual: str) -> str | None:
     """Check the actual string for common errors.
 
     :param actual: The actual string.
@@ -177,7 +177,7 @@ def check_trailing_newline(actual: str) -> str | None:
     None.
     :rtype: str | None
     """
-    if actual.endswith('\n'):
+    if actual.endswith('\n') and not expected.endswith('\n'):
         return True
     return False
 

@@ -182,7 +182,6 @@ def check_trailing_newline(expected: str, actual: str) -> str | None:
     return False
 
 
-
 def check_double_spaces(actual: str) -> bool:
     """Check the actual string for common errors.
 
@@ -197,6 +196,7 @@ def check_double_spaces(actual: str) -> bool:
         return True
     return False
 
+
 def find_double_spaces(actual: str) -> str:
     """Finds the location of the double spaces in the actual string and
     builds an error string.
@@ -205,6 +205,7 @@ def find_double_spaces(actual: str) -> str:
     :return: An error message containing the location of the double spaces in the actual.
     """
     return f"There are two spaces at index: {actual.index('  ')}. "
+
 
 def reload_module(module_name: str) -> None:
     """Reloads the module. Ensures it is reloaded if previously loaded.

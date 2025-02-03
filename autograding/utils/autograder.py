@@ -240,21 +240,3 @@ def patch_input_output(monkeypatch: Any, test_inputs: list, module_name: str) ->
         m.setattr('sys.stdout', patch_stdout)
         reload_module(module_name)
     return patch_stdout
-
-
-def stringio_param_iteration(monkeypatch, parameters: list, module_name: str):
-    for param in parameters:
-        # patch the standard output to catch the output of print()
-        # make a new StringIO object for each input/output test to avoid accumulation
-        # of output
-        patch_stdout = StringIO()
-        # Returns a new mock object which undoes any patching done inside the block
-        # on exit to avoid breaking pytest itself
-        with monkeypatch.context() as m:
-            # patches the input() and pops the first test input in params
-            m.setattr('builtins.input', lambda prompt='': param.test_inputs.pop(0))
-            m.setattr('sys.stdout', patch_stdout)
-            sys.modules.pop(module_name, None)
-            mod = import_module(name=module_name)
-            mod.main()
-        assert patch_stdout.getvalue() == param.expected_output, "Incorrect output!"

@@ -79,7 +79,7 @@ def assert_script_exists(module_name: str, accepted_dirs: list) -> None:
 # Utility functions.
 def format_type(var_type: str) -> str:
     """Formats repr class type.
-    :param var_type: The type of a variable.
+    :param var_type: The name of a type.
     :return: The formatted type.
     """
     return var_type.split("'")[1::2][0]
@@ -150,7 +150,7 @@ def build_string_error(expected: str, actual: str) -> str:
     return error_msg
 
 
-def find_incorrect_char(expected: str, actual: str) -> str:
+def find_incorrect_char(expected: str, actual: str) -> str | None:
     """Finds the index of the first actual character that does not match
     the expected character.
 
@@ -169,10 +169,13 @@ def find_incorrect_char(expected: str, actual: str) -> str:
                     f" {repr(expected)} but got {repr(actual)}")
 
 
-def check_trailing_newline(expected: str, actual: str) -> str | None:
+def check_trailing_newline(expected: str, actual: str) -> bool:
     """Check the actual string for common errors.
 
     :param actual: The actual string.
+    :type actual: str
+    :param expected: The expected string.
+    :type expected: str
     :return: A string to concatenate to the error if there are common errors, otherwise
     None.
     :rtype: str | None
@@ -190,7 +193,6 @@ def check_double_spaces(actual: str) -> bool:
     None.
     :rtype: str | None
     """
-    message = ""
     # Check for double spaces.
     if '  ' in actual:
         return True
@@ -238,3 +240,21 @@ def patch_input_output(monkeypatch: Any, test_inputs: list, module_name: str) ->
         m.setattr('sys.stdout', patch_stdout)
         reload_module(module_name)
     return patch_stdout
+
+
+def stringio_param_iteration(monkeypatch, parameters: list, module_name: str):
+    for param in parameters:
+        # patch the standard output to catch the output of print()
+        # make a new StringIO object for each input/output test to avoid accumulation
+        # of output
+        patch_stdout = StringIO()
+        # Returns a new mock object which undoes any patching done inside the block
+        # on exit to avoid breaking pytest itself
+        with monkeypatch.context() as m:
+            # patches the input() and pops the first test input in params
+            m.setattr('builtins.input', lambda prompt='': param.test_inputs.pop(0))
+            m.setattr('sys.stdout', patch_stdout)
+            sys.modules.pop(module_name, None)
+            mod = import_module(name=module_name)
+            mod.main()
+        assert patch_stdout.getvalue() == param.expected_output, "Incorrect output!"

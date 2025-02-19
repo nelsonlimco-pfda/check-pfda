@@ -11,22 +11,6 @@ from typing import Any
 import pytest
 
 
-class AutograderError(Exception):
-    def __init__(self, message, expected=None, actual=None, extra_info=None):
-        super().__init__(message)
-        self.expected = expected
-        self.actual = actual
-        self.context = extra_info
-
-    def __str__(self):
-        error_msg = super().__str__()
-        if self.actual or self.expected:
-            error_msg += f"\nExpected: {repr(self.expected)}\nActual  : {repr(self.actual)}"
-        if self.context:
-            error_msg += f"\nContext: {self.context}"
-        return error_msg
-
-
 # Constants.
 STRING_LEN_LIMIT = 1000
 
@@ -41,18 +25,7 @@ def assert_equal(expected: Any, actual: Any) -> None:
     each value.
     :return: None
     """
-    is_str = isinstance(expected, str)
-    # Raise for different expected and actual types.
-    if is_different_type(expected, actual):
-        raise AutograderError(f"Expected and actual types differ. "
-                              f"Expected value: {expected} of type: "
-                              f"{format_type(str(type(expected)))}, but got value: "
-                              f"{actual} of type: {format_type(str(type(actual)))}")
-    if expected != actual:
-        raise AutograderError(f"""
-        {build_string_error(expected, actual) if is_str else "Error."}""",
-                              expected=expected,
-                              actual=actual)
+    assert actual == expected, build_user_friendly_err(actual, expected)
 
 
 def assert_script_exists(module_name: str, accepted_dirs: list) -> None:
@@ -70,10 +43,40 @@ def assert_script_exists(module_name: str, accepted_dirs: list) -> None:
         print(filename)
         if os.path.exists(filename):
             return None
-    raise AutograderError("The script does not exist. "
-                          "The most likely cause is that the current working directory "
-                          "is not `src`. Make sure that you ran `cd src` in the "
-                          "terminal before you executed the script.\n")
+    assert False, (f"The script '{module_name}.py' does not exist in the accepted "
+                   f"directories: {accepted_dirs}.")
+
+
+def build_user_friendly_err(actual, expected):
+    error_msg = (f"\n\nANGM2305 Autograder User-friendly Message:\n"
+                 f"------------------------------------------\n"
+                 f"What the Test Expected:\n"
+                 f"{expected}\n\n"
+                 f"Program's Actual Output:\n"
+                 f"{actual}\n\n"
+                 f"Issues Caught (there may be others):\n")
+    errors = []
+
+    if actual is None and expected is not None:
+        errors.append("The program did not produce any output.")
+    elif actual is not None and expected is None:
+        errors.append("The program produced output when it was not expected.")
+
+    if is_different_type(expected, actual):
+        errors.append(f"The expected value is of type {format_type(type(expected))}, "
+                      f"but the actual value is of type {format_type(type(actual))}.")
+    elif isinstance(expected, str):
+        for error in build_string_error(expected, actual):
+            errors.append(error)
+    else:
+        errors.append("Error! Values are not equal.")
+
+    for error in errors:
+        error_msg += f"- {error}\n"
+
+    error_msg += ("\nPytests's Error Message:\n"
+                  "------------------------")
+    return error_msg
 
 
 # Utility functions.
@@ -116,7 +119,7 @@ def is_different_type(expected: Any, actual: Any) -> bool:
     return not isinstance(actual, type(expected))
 
 
-def build_string_error(expected: str, actual: str) -> str:
+def build_string_error(expected: str, actual: str) -> list:
     """Handles string comparison for asserting equivalency.
 
     :param expected: The expected string.
@@ -126,28 +129,27 @@ def build_string_error(expected: str, actual: str) -> str:
     :return: An error message.
     :rtype: str
     """
+    errors = []
     expected_len = len(expected)
     actual_len = len(actual)
     # Enforce a length limit in case a student accidentally makes an enormous string.
     if actual_len > STRING_LEN_LIMIT:
-        return (f"The actual string exceeds the maximum allowed length.\n"
-            f"Actual length is: {actual_len}\nLimit is: {STRING_LEN_LIMIT}")
-    error_msg = ""
-    if check_double_spaces(actual):
-        error_msg += find_double_spaces(actual)
+        errors.append(f"The actual string exceeds the maximum allowed length.\n"
+                f"Actual length is: {actual_len}\nLimit is: {STRING_LEN_LIMIT}")
+    if check_double_spaces(expected, actual):
+        errors.append(find_double_spaces(actual))
     if check_trailing_newline(expected, actual):
-        error_msg += ("There is a trailing newline ('\\n') at the end of the actual "
-                      "string. ")
+        errors.append(("There is a trailing newline ('\\n') at the end of the actual "
+                      "string. "))
     # Highlight which character differs.
     if expected_len == actual_len:
-        error_msg += find_incorrect_char(expected, actual)
+        errors.append(find_incorrect_char(expected, actual))
     # Else highlight the length difference.
     else:
-        error_msg += (f"The expected and actual string lengths are "
-                               f"different. Expected length: {expected_len}, but "
-                               f"got length: {actual_len}. Expected {repr(expected)} "
-                               f"but got: {repr(actual)}")
-    return error_msg
+        errors.append(f"The expected and actual string lengths are "
+                      f"different. Expected length: {expected_len}, but "
+                      f"got length: {actual_len}.")
+    return errors
 
 
 def find_incorrect_char(expected: str, actual: str) -> str | None:
@@ -165,8 +167,7 @@ def find_incorrect_char(expected: str, actual: str) -> str | None:
         actual_char = actual[idx]
         if expected_char != actual_char:
             return (f"Character '{actual[idx]}' at index {idx} of "
-                    f"the actual is the first that does not match. Expected"
-                    f" {repr(expected)} but got {repr(actual)}")
+                    f"the actual is the first that does not match.")
 
 
 def check_trailing_newline(expected: str, actual: str) -> bool:
@@ -185,7 +186,7 @@ def check_trailing_newline(expected: str, actual: str) -> bool:
     return False
 
 
-def check_double_spaces(actual: str) -> bool:
+def check_double_spaces(expected: str, actual: str) -> bool:
     """Check the actual string for common errors.
 
     :param actual: The actual string.
@@ -194,7 +195,7 @@ def check_double_spaces(actual: str) -> bool:
     :rtype: str | None
     """
     # Check for double spaces.
-    if '  ' in actual:
+    if '  ' in actual and not '  ' in expected:
         return True
     return False
 

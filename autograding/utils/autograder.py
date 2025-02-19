@@ -7,27 +7,13 @@ import sys
 from typing import Any
 
 
-# PyPi libraries.
-import pytest
-
-
 # Constants.
 STRING_LEN_LIMIT = 1000
 
 
-# Assertions.
-def assert_equal(expected: Any, actual: Any) -> None:
-    """Checks that two variables are equal. If not, raises an informative error.
-
-    :param expected: The expected value.
-    :param actual: The actual value.
-    :raises AutograderError: Error message containing detailed information about
-    each value.
-    :return: None
-    """
-    assert actual == expected, build_user_friendly_err(actual, expected)
-
-
+"""
+Public functions. These are intended for direct implementation in unit tests.
+"""
 def assert_script_exists(module_name: str, accepted_dirs: list) -> None:
     """Checks accepted subfolders for the module script.
 
@@ -47,7 +33,16 @@ def assert_script_exists(module_name: str, accepted_dirs: list) -> None:
                    f"directories: {accepted_dirs}.")
 
 
-def build_user_friendly_err(actual, expected):
+def build_user_friendly_err(actual: Any, expected: Any) -> str:
+    """Builds a user-friendly error message to accompany a pytest AssertionError.
+
+    :param actual: The actual output of the tested program.
+    :type actual: Any
+    :param expected: The expected output of the tested program.
+    :type expected: Any
+    :return: A user-friendly error message.
+    :rtype: str
+    """
     error_msg = (f"\n\nANGM2305 Autograder User-friendly Message:\n"
                  f"------------------------------------------\n"
                  f"What the Test Expected:\n"
@@ -62,11 +57,11 @@ def build_user_friendly_err(actual, expected):
     elif actual is not None and expected is None:
         errors.append("The program produced output when it was not expected.")
 
-    if is_different_type(expected, actual):
-        errors.append(f"The expected value is of type {format_type(type(expected))}, "
-                      f"but the actual value is of type {format_type(type(actual))}.")
+    if _is_different_type(expected, actual):
+        errors.append(f"The expected value is of type {_format_type(type(expected))}, "
+                      f"but the actual value is of type {_format_type(type(actual))}.")
     elif isinstance(expected, str):
-        for error in build_string_error(expected, actual):
+        for error in _build_string_error(expected, actual):
             errors.append(error)
     else:
         errors.append("Error! Values are not equal.")
@@ -77,15 +72,6 @@ def build_user_friendly_err(actual, expected):
     error_msg += ("\nPytests's Error Message:\n"
                   "------------------------")
     return error_msg
-
-
-# Utility functions.
-def format_type(var_type: str) -> str:
-    """Formats repr class type.
-    :param var_type: The name of a type.
-    :return: The formatted type.
-    """
-    return var_type.split("'")[1::2][0]
 
 
 def generate_temp_file(filename: str, tmpdir: py.path.local, contents: Any) -> str:
@@ -104,110 +90,6 @@ def generate_temp_file(filename: str, tmpdir: py.path.local, contents: Any) -> s
     with open(filepath, 'w') as f:
         f.write(contents)
     return filepath
-
-
-def is_different_type(expected: Any, actual: Any) -> bool:
-    """Evaluates if the two arguments are the same type.
-
-    :param expected: The expected object.
-    :type expected: Any
-    :param actual: The actual object.
-    :type actual: Any
-    :return: If the two objects are the same type.
-    :rtype: bool
-    """
-    return not isinstance(actual, type(expected))
-
-
-def build_string_error(expected: str, actual: str) -> list:
-    """Handles string comparison for asserting equivalency.
-
-    :param expected: The expected string.
-    :type expected: str
-    :param actual: The actual string.
-    :type actual: str
-    :return: An error message.
-    :rtype: str
-    """
-    errors = []
-    expected_len = len(expected)
-    actual_len = len(actual)
-    # Enforce a length limit in case a student accidentally makes an enormous string.
-    if actual_len > STRING_LEN_LIMIT:
-        errors.append(f"The actual string exceeds the maximum allowed length.\n"
-                f"Actual length is: {actual_len}\nLimit is: {STRING_LEN_LIMIT}")
-    if check_double_spaces(expected, actual):
-        errors.append(find_double_spaces(actual))
-    if check_trailing_newline(expected, actual):
-        errors.append(("There is a trailing newline ('\\n') at the end of the actual "
-                      "string. "))
-    # Highlight which character differs.
-    if expected_len == actual_len:
-        errors.append(find_incorrect_char(expected, actual))
-    # Else highlight the length difference.
-    else:
-        errors.append(f"The expected and actual string lengths are "
-                      f"different. Expected length: {expected_len}, but "
-                      f"got length: {actual_len}.")
-    return errors
-
-
-def find_incorrect_char(expected: str, actual: str) -> str | None:
-    """Finds the index of the first actual character that does not match
-    the expected character.
-
-    :param expected: The expected string.
-    :type expected: str
-    :param actual: The actual string.
-    :type actual: str
-    :return: A string containing the incorrect character and its index.
-    :rtype: str
-    """
-    for idx, expected_char in enumerate(expected):
-        actual_char = actual[idx]
-        if expected_char != actual_char:
-            return (f"Character '{actual[idx]}' at index {idx} of "
-                    f"the actual is the first that does not match.")
-
-
-def check_trailing_newline(expected: str, actual: str) -> bool:
-    """Check the actual string for common errors.
-
-    :param actual: The actual string.
-    :type actual: str
-    :param expected: The expected string.
-    :type expected: str
-    :return: A string to concatenate to the error if there are common errors, otherwise
-    None.
-    :rtype: str | None
-    """
-    if actual.endswith('\n') and not expected.endswith('\n'):
-        return True
-    return False
-
-
-def check_double_spaces(expected: str, actual: str) -> bool:
-    """Check the actual string for common errors.
-
-    :param actual: The actual string.
-    :return: A string to concatenate to the error if there are common errors, otherwise
-    None.
-    :rtype: str | None
-    """
-    # Check for double spaces.
-    if '  ' in actual and not '  ' in expected:
-        return True
-    return False
-
-
-def find_double_spaces(actual: str) -> str:
-    """Finds the location of the double spaces in the actual string and
-    builds an error string.
-
-    :param actual: The actual string.
-    :return: An error message containing the location of the double spaces in the actual.
-    """
-    return f"There are two spaces at index: {actual.index('  ')}. "
 
 
 def reload_module(module_name: str) -> None:
@@ -241,3 +123,118 @@ def patch_input_output(monkeypatch: Any, test_inputs: list, module_name: str) ->
         m.setattr('sys.stdout', patch_stdout)
         reload_module(module_name)
     return patch_stdout
+
+
+"""
+Private functions. Do not implement these directly in any unit tests.
+"""
+def _format_type(var_type: str) -> str:
+    """Formats repr class type.
+    :param var_type: The name of a type.
+    :return: The formatted type.
+    """
+    return var_type.split("'")[1::2][0]
+
+
+def _is_different_type(expected: Any, actual: Any) -> bool:
+    """Evaluates if the two arguments are the same type.
+
+    :param expected: The expected object.
+    :type expected: Any
+    :param actual: The actual object.
+    :type actual: Any
+    :return: If the two objects are the same type.
+    :rtype: bool
+    """
+    return not isinstance(actual, type(expected))
+
+
+def _build_string_error(expected: str, actual: str) -> list:
+    """Handles string comparison for asserting equivalency.
+
+    :param expected: The expected string.
+    :type expected: str
+    :param actual: The actual string.
+    :type actual: str
+    :return: An error message.
+    :rtype: str
+    """
+    errors = []
+    expected_len = len(expected)
+    actual_len = len(actual)
+    # Enforce a length limit in case a student accidentally makes an enormous string.
+    if actual_len > STRING_LEN_LIMIT:
+        errors.append(f"The actual string exceeds the maximum allowed length.\n"
+                f"Actual length is: {actual_len}\nLimit is: {STRING_LEN_LIMIT}")
+    if _check_double_spaces(expected, actual):
+        errors.append(_find_double_spaces(actual))
+    if _check_trailing_newline(expected, actual):
+        errors.append(("There is a trailing newline ('\\n') at the end of the actual "
+                      "string. "))
+    # Highlight which character differs.
+    if expected_len == actual_len:
+        errors.append(_find_incorrect_char(expected, actual))
+    # Else highlight the length difference.
+    else:
+        errors.append(f"The expected and actual string lengths are "
+                      f"different. Expected length: {expected_len}, but "
+                      f"got length: {actual_len}.")
+    return errors
+
+
+def _find_incorrect_char(expected: str, actual: str) -> str | None:
+    """Finds the index of the first actual character that does not match
+    the expected character.
+
+    :param expected: The expected string.
+    :type expected: str
+    :param actual: The actual string.
+    :type actual: str
+    :return: A string containing the incorrect character and its index.
+    :rtype: str
+    """
+    for idx, expected_char in enumerate(expected):
+        actual_char = actual[idx]
+        if expected_char != actual_char:
+            return (f"Character '{actual[idx]}' at index {idx} of "
+                    f"the actual is the first that does not match.")
+
+
+def _check_trailing_newline(expected: str, actual: str) -> bool:
+    """Check the actual string for common errors.
+
+    :param actual: The actual string.
+    :type actual: str
+    :param expected: The expected string.
+    :type expected: str
+    :return: A string to concatenate to the error if there are common errors, otherwise
+    None.
+    :rtype: str | None
+    """
+    if actual.endswith('\n') and not expected.endswith('\n'):
+        return True
+    return False
+
+
+def _check_double_spaces(expected: str, actual: str) -> bool:
+    """Check the actual string for common errors.
+
+    :param actual: The actual string.
+    :return: A string to concatenate to the error if there are common errors, otherwise
+    None.
+    :rtype: str | None
+    """
+    # Check for double spaces.
+    if '  ' in actual and not '  ' in expected:
+        return True
+    return False
+
+
+def _find_double_spaces(actual: str) -> str:
+    """Finds the location of the double spaces in the actual string and
+    builds an error string.
+
+    :param actual: The actual string.
+    :return: An error message containing the location of the double spaces in the actual.
+    """
+    return f"There are two spaces at index: {actual.index('  ')}. "

@@ -61,8 +61,7 @@ def build_user_friendly_err(actual: Any, expected: Any) -> str:
         )
     elif isinstance(expected, str):
         for error in _find_string_comparison_errors(expected, actual):
-            if error:
-                errors.append(error)
+            errors.append(error)
     else:
         errors.append("Your output does not match the expected format or values.")
 

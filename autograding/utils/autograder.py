@@ -35,7 +35,8 @@ def assert_script_exists(module_name: str, accepted_dirs: list) -> None:
 
 
 def build_user_friendly_err(actual: Any, expected: Any) -> str:
-    """Builds a user-friendly error message to accompany a pytest AssertionError.
+    """Builds a user-friendly error message to accompany a pytest
+    AssertionError.
 
     :param actual: The actual output of the tested program.
     :type actual: Any
@@ -49,7 +50,8 @@ def build_user_friendly_err(actual: Any, expected: Any) -> str:
     if actual is None and expected is not None:
         errors.append("Your function/program did not produce any output.")
     elif actual is not None and expected is None:
-        errors.append("Your function/program produced output when it was not expected.")
+        errors.append("Your function/program produced output when it was "
+                      "not expected.")
 
     if _is_different_type(expected, actual):
         errors.append(
@@ -61,7 +63,8 @@ def build_user_friendly_err(actual: Any, expected: Any) -> str:
         for error in _find_string_comparison_errors(expected, actual):
             errors.append(error)
     else:
-        errors.append("Your output does not match the expected format or values.")
+        errors.append("Your output does not match the expected "
+                      "format or values.")
 
     errors_formatted = "\n- ".join(errors)
     error_msg = (
@@ -80,7 +83,9 @@ def build_user_friendly_err(actual: Any, expected: Any) -> str:
     return error_msg
 
 
-def generate_temp_file(filename: str, tmpdir: py.path.local, contents: Any) -> str:
+def generate_temp_file(filename: str,
+                       tmpdir: py.path.local,
+                       contents: Any) -> str:
     """Generates a temporary file to test with.
 
     :param filename: The name of the temporary file.
@@ -108,13 +113,13 @@ def reload_module(module_name: str) -> None:
     import_module(name=module_name)
 
 
-def patch_input_output(
-        monkeypatch: Any, test_inputs: list, module_name: str
-) -> StringIO:
+def patch_input_output(monkeypatch: Any,
+                       test_inputs: list,
+                       module_name: str) -> StringIO:
     """Patches input() and standard out.
 
     :param monkeypatch: Pytest's monkeypatch fixture.
-    :type monkeypatch: Monkeypatch #TODO: doesn't look like it's possible to type hint?
+    :type monkeypatch: Monkeypatch
     :param test_inputs: The inputs to test known outputs against.
     :type test_inputs: list
     :param module_name: The name of the module to test.
@@ -172,10 +177,12 @@ def _find_string_comparison_errors(expected: str, actual: str) -> list:
     errors = []
     expected_len = len(expected)
     actual_len = len(actual)
-    # Enforce a length limit in case a student accidentally makes an enormous string.
+    # Enforce a length limit in case a student
+    # accidentally makes an enormous string.
     if actual_len > STRING_LEN_LIMIT:
-        errors.append(f"The actual string exceeds the maximum allowed length.\n"
-                      f"Actual length is: {actual_len}\nLimit is: {STRING_LEN_LIMIT}")
+        errors.append(f"The actual string exceeds the maximum allowed "
+                      f"length.\n Actual length is: {actual_len}\n"
+                      f"Limit is: {STRING_LEN_LIMIT}")
     check_functions = [_check_trailing_newline, _check_double_spaces]
     for f in check_functions:
         if f(expected, actual):
@@ -218,8 +225,8 @@ def _check_trailing_newline(expected: str, actual: str) -> str | None:
     :type actual: str
     :param expected: The expected string.
     :type expected: str
-    :return: A string to concatenate to the error if there are common errors, otherwise
-    None.
+    :return: A string to concatenate to the error if there are
+    common errors, otherwise None.
     :rtype: str | None
     """
     if actual.endswith("\n") and not expected.endswith("\n"):
@@ -231,11 +238,11 @@ def _check_double_spaces(expected: str, actual: str) -> str | None:
     """Check the actual string for common errors.
 
     :param actual: The actual string.
-    :return: A string to concatenate to the error if there are common errors, otherwise
-    None.
+    :return: A string to concatenate to the error if there are
+    common errors, otherwise None.
     :rtype: str | None
     """
     # Check for double spaces.
-    if "  " in actual and not "  " in expected:
-        return (f"There are two spaces at index {actual.index('  ')} of your program"
-                f"/function's output.")
+    if "  " in actual and "  " not in expected:
+        return (f"There are two spaces at index {actual.index('  ')} "
+                f"of your program/function's output.")

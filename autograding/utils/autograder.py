@@ -6,10 +6,8 @@ import py.path
 import sys
 from typing import Any
 
-
 # Constants.
 STRING_LEN_LIMIT = 1000
-
 
 """
 Public functions. These are intended for direct implementation in unit tests.
@@ -111,7 +109,7 @@ def reload_module(module_name: str) -> None:
 
 
 def patch_input_output(
-    monkeypatch: Any, test_inputs: list, module_name: str
+        monkeypatch: Any, test_inputs: list, module_name: str
 ) -> StringIO:
     """Patches input() and standard out.
 
@@ -176,10 +174,8 @@ def _find_string_comparison_errors(expected: str, actual: str) -> list:
     actual_len = len(actual)
     # Enforce a length limit in case a student accidentally makes an enormous string.
     if actual_len > STRING_LEN_LIMIT:
-        errors.append(
-            f"The actual string exceeds the maximum allowed length.\n"
-            f"Actual length is: {actual_len}\nLimit is: {STRING_LEN_LIMIT}"
-        )
+        errors.append(f"The actual string exceeds the maximum allowed length.\n"
+                      f"Actual length is: {actual_len}\nLimit is: {STRING_LEN_LIMIT}")
     check_functions = [_check_trailing_newline, _check_double_spaces]
     for f in check_functions:
         if f(expected, actual):
@@ -189,11 +185,9 @@ def _find_string_comparison_errors(expected: str, actual: str) -> list:
         errors.append(_find_incorrect_char(expected, actual))
     # Else highlight the length difference.
     else:
-        errors.append(
-            f"The expected and actual string lengths are "
-            f"different. Expected length: {expected_len}, but "
-            f"got length: {actual_len}."
-        )
+        errors.append(f"The expected and actual string lengths are "
+                      f"different. Expected length: {expected_len}, but "
+                      f"got length: {actual_len}.")
     return errors
 
 
@@ -211,12 +205,10 @@ def _find_incorrect_char(expected: str, actual: str) -> str | None:
     for idx, expected_char in enumerate(expected):
         actual_char = actual[idx]
         if expected_char != actual_char:
-            return (
-                f"Character '{actual[idx]}' at index {idx} does "
-                f"not match with the expect output."
-                f"This is the first mismatched character. There"
-                f"may be others."
-            )
+            return (f"Character '{actual[idx]}' at index {idx} does "
+                    f"not match with the expect output."
+                    f"This is the first mismatched character. There"
+                    f"may be others.")
 
 
 def _check_trailing_newline(expected: str, actual: str) -> str | None:
@@ -231,10 +223,8 @@ def _check_trailing_newline(expected: str, actual: str) -> str | None:
     :rtype: str | None
     """
     if actual.endswith("\n") and not expected.endswith("\n"):
-        return (
-            "Your program/function's output has an extra newline "
-            "character ('\\n') at the end."
-        )
+        return ("Your program/function's output has an extra newline "
+                "character ('\\n') at the end.")
 
 
 def _check_double_spaces(expected: str, actual: str) -> str | None:
@@ -243,11 +233,9 @@ def _check_double_spaces(expected: str, actual: str) -> str | None:
     :param actual: The actual string.
     :return: A string to concatenate to the error if there are common errors, otherwise
     None.
-    :rtype: int | None
+    :rtype: str | None
     """
     # Check for double spaces.
     if "  " in actual and not "  " in expected:
-        return (
-            f"There are two spaces at index {actual.index('  ')} of your program"
-            f"/function's output."
-        )
+        return (f"There are two spaces at index {actual.index('  ')} of your program"
+                f"/function's output.")

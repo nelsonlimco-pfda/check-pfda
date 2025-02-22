@@ -28,10 +28,8 @@ def assert_script_exists(module_name: str, accepted_dirs: list) -> None:
         print(filename)
         if os.path.exists(filename):
             return None
-    assert False, (
-        f"The script '{module_name}.py' does not exist in the accepted "
-        f"directories: {accepted_dirs}."
-    )
+    assert False, (f"The script '{module_name}.py' does not exist in "
+                   f"the accepted directories: {accepted_dirs}.")
 
 
 def build_user_friendly_err(actual: Any, expected: Any) -> str:

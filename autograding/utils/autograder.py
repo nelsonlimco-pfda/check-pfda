@@ -1,13 +1,17 @@
-# System libraries.
-from io import StringIO
-from importlib import import_module
+"""Public modules."""
 import os
-import py.path
 import sys
+from importlib import import_module
+from io import StringIO
 from typing import Any
+
+
+import py.path
+
 
 # Constants.
 STRING_LEN_LIMIT = 1000
+
 
 """
 Public functions. These are intended for direct implementation in unit tests.
@@ -21,7 +25,8 @@ def assert_script_exists(module_name: str, accepted_dirs: list) -> None:
     :type module_name: str
     :param accepted_dirs: The accepted subfolders for the script.
     :type accepted_dirs: list
-    :return: None"""
+    :return: None
+    """
     curr_dir = os.getcwd()
     for subfolder in accepted_dirs:
         filename = os.path.join(curr_dir, subfolder, f"{module_name}.py")
@@ -55,8 +60,7 @@ def build_user_friendly_err(actual: Any, expected: Any) -> str:
         errors.append(
             f"The expected data type is {_format_type(type(expected))}, "
             f"but your actual output data type is "
-            f"{_format_type(type(actual))}."
-        )
+            f"{_format_type(type(actual))}.")
     elif isinstance(expected, str):
         for error in _find_string_comparison_errors(expected, actual):
             errors.append(error)
@@ -76,8 +80,7 @@ def build_user_friendly_err(actual: Any, expected: Any) -> str:
         f"\n\nIssues Found:"
         f"\n- {errors_formatted}"
         f"\n\nPytest Error Message:"
-        f"\n---------------------"
-    )
+        f"\n---------------------")
     return error_msg
 
 
@@ -106,7 +109,7 @@ def reload_module(module_name: str) -> None:
 
     :param module_name: The name of the module to reload.
     :type module_name: str
-    :return: None"""
+    """
     sys.modules.pop(module_name, None)
     import_module(name=module_name)
 
@@ -117,13 +120,14 @@ def patch_input_output(monkeypatch: Any,
     """Patches input() and standard out.
 
     :param monkeypatch: Pytest's monkeypatch fixture.
-    :type monkeypatch: Monkeypatch
+    :type monkeypatch: Any
     :param test_inputs: The inputs to test known outputs against.
     :type test_inputs: list
     :param module_name: The name of the module to test.
     :type module_name: str
     :return: The patched standard out.
-    :rtype: StringIO"""
+    :rtype: StringIO
+    """
     # patches the standard output to catch the output of print()
     patch_stdout = StringIO()
     # Returns a new mock object which undoes any patching done inside
@@ -170,7 +174,7 @@ def _find_string_comparison_errors(expected: str, actual: str) -> list:
     :param actual: The actual string.
     :type actual: str
     :return: An error message.
-    :rtype: str
+    :rtype: list
     """
     errors = []
     expected_len = len(expected)
@@ -224,7 +228,7 @@ def _check_trailing_newline(expected: str, actual: str) -> str | None:
     :param expected: The expected string.
     :type expected: str
     :return: A string to concatenate to the error if there are
-    common errors, otherwise None.
+        common errors, otherwise None.
     :rtype: str | None
     """
     if actual.endswith("\n") and not expected.endswith("\n"):
@@ -235,9 +239,12 @@ def _check_trailing_newline(expected: str, actual: str) -> str | None:
 def _check_double_spaces(expected: str, actual: str) -> str | None:
     """Check the actual string for common errors.
 
+    :param expected: The expected string.
+    :type expected: str
     :param actual: The actual string.
+    :type actual: str
     :return: A string to concatenate to the error if there are
-    common errors, otherwise None.
+        common errors, otherwise None.
     :rtype: str | None
     """
     # Check for double spaces.

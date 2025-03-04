@@ -1,3 +1,2 @@
 [flake8]
 docstring_style = sphinx
-ignore = B011, D205, D400, D401

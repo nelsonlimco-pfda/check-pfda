@@ -231,7 +231,7 @@ def _check_trailing_newline(expected: str, actual: str) -> str | None:
     """
     if actual.endswith("\n") and not expected.endswith("\n"):
         return ("Your program/function's output has an extra newline "
-                "character ('\\n') at the end.")
+                "character \'\\n\' at the end.")
 
 
 def _check_double_spaces(expected: str, actual: str) -> str | None:

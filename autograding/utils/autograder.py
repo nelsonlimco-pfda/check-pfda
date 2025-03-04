@@ -213,7 +213,7 @@ def _find_incorrect_char(expected: str, actual: str) -> str | None:
         actual_char = actual[idx]
         if expected_char != actual_char:
             return (f"Character '{actual[idx]}' at index {idx} does "
-                    f"not match with the expect output."
+                    f"not match with the expect output. "
                     f"This is the first mismatched character. There "
                     f"may be others.")
 

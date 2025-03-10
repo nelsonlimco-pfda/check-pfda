@@ -1,0 +1,2 @@
+[flake8]
+docstring_style = sphinx

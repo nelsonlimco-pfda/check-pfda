@@ -252,9 +252,18 @@ def _check_double_spaces(expected: str, actual: str) -> str | None:
 
 
 def _check_length_limit(actual: str, limit: int) -> str | None:
-    """Check the actual string to ensure that """
+    """Enforce a length limit on the actual string.
+
+    :param actual: The actual string.
+    :type actual: str
+    :param limit: The expected length.
+    :type limit: int
+    :return: A string to concatenate to the error if there are
+        common errors, otherwise None.
+    :rtype: str | None
+    """
     actual_len = len(actual)
     if actual_len > limit:
         return (f"The actual string exceeds the maximum allowed "
-                  f"length.\n Actual length is: {actual_len}\n"
-                  f"Limit is: {limit}")
+                f"length.\n Actual length is: {actual_len}\n"
+                f"Limit is: {limit}")

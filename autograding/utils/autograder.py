@@ -177,12 +177,12 @@ def _find_string_comparison_errors(expected: str, actual: str) -> list:
     errors = []
     expected_len = len(expected)
     actual_len = len(actual)
-    # Enforce a length limit in case a student
-    # accidentally makes an enormous string.
-    if actual_len > STRING_LEN_LIMIT:
-        errors.append(f"The actual string exceeds the maximum allowed "
-                      f"length.\n Actual length is: {actual_len}\n"
-                      f"Limit is: {STRING_LEN_LIMIT}")
+    # Enforce a length limit in case a student accidentally makes
+    # an enormous string.
+    check_length_error_msg = _check_length_limit(actual, STRING_LEN_LIMIT)
+    if check_length_error_msg:
+        errors.append(check_length_error_msg)
+        return errors
     check_functions = [_check_trailing_newline, _check_double_spaces]
     for f in check_functions:
         if f(expected, actual):
@@ -249,3 +249,21 @@ def _check_double_spaces(expected: str, actual: str) -> str | None:
     if "  " in actual and "  " not in expected:
         return (f"There are two spaces at index {actual.index('  ')} "
                 f"of your program/function's output.")
+
+
+def _check_length_limit(actual: str, limit: int) -> str | None:
+    """Enforce a length limit on the actual string.
+
+    :param actual: The actual string.
+    :type actual: str
+    :param limit: The expected length.
+    :type limit: int
+    :return: A string to concatenate to the error if there are
+        common errors, otherwise None.
+    :rtype: str | None
+    """
+    actual_len = len(actual)
+    if actual_len > limit:
+        return (f"The actual string exceeds the maximum allowed "
+                f"length.\n Actual length is: {actual_len}\n"
+                f"Limit is: {limit}")

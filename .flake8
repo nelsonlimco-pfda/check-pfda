@@ -1,2 +1,5 @@
 [flake8]
 docstring_style = sphinx
+exclude =
+    .venv
+    __init__.py

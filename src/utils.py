@@ -3,9 +3,11 @@ import os
 import sys
 from importlib import import_module
 from io import StringIO
-import py.path
 from typing import Any
 
+import py.path
+
+import pytest
 
 # Constants.
 STRING_LEN_LIMIT = 1000
@@ -17,13 +19,14 @@ Public functions. These are intended for direct implementation in unit tests.
 
 
 def assert_script_exists(module_name: str, accepted_dirs: list) -> None:
-    """Checks accepted subfolders for the module script.
+    """Check accepted subfolders for the module script.
 
     :param module_name: The name of the module to check.
     :type module_name: str
     :param accepted_dirs: The accepted subfolders for the script.
     :type accepted_dirs: list
     :return: None
+    :rtype: None
     """
     curr_dir = os.getcwd()
     for subfolder in accepted_dirs:
@@ -31,13 +34,12 @@ def assert_script_exists(module_name: str, accepted_dirs: list) -> None:
         print(filename)
         if os.path.exists(filename):
             return None
-    assert False, (f"The script '{module_name}.py' does not exist in "
-                   f"the accepted directories: {accepted_dirs}.")
+    pytest.fail(reason=f"The script '{module_name}.py' does not exist in "
+                       f"the accepted directories: {accepted_dirs}.")
 
 
 def build_user_friendly_err(actual: Any, expected: Any) -> str:
-    """Builds a user-friendly error message to accompany a pytest
-    AssertionError.
+    """Build a user-friendly error to accompany a pytest AssertionError.
 
     :param actual: The actual output of the tested program.
     :type actual: Any
@@ -85,7 +87,7 @@ def build_user_friendly_err(actual: Any, expected: Any) -> str:
 def generate_temp_file(filename: str,
                        tmpdir: py.path.local,
                        contents: Any) -> str:
-    """Generates a temporary file to test with.
+    """Generate a temporary file to test with.
 
     :param filename: The name of the temporary file.
     :type filename: str
@@ -103,7 +105,7 @@ def generate_temp_file(filename: str,
 
 
 def reload_module(module_name: str) -> None:
-    """Reloads the module. Ensures it is reloaded if previously loaded.
+    """Reload the module. Ensures it is reloaded if previously loaded.
 
     :param module_name: The name of the module to reload.
     :type module_name: str
@@ -115,7 +117,7 @@ def reload_module(module_name: str) -> None:
 def patch_input_output(monkeypatch: Any,
                        test_inputs: list,
                        module_name: str) -> StringIO:
-    """Patches input() and standard out.
+    """Patch input() and standard out.
 
     :param monkeypatch: Pytest's monkeypatch fixture.
     :type monkeypatch: Any
@@ -144,15 +146,18 @@ Private functions. Do not implement these directly in any unit tests.
 
 
 def _format_type(var_type: str) -> str:
-    """Formats repr class type.
+    """Format repr class type.
+
     :param var_type: The name of a type.
+    :type var_type: str
     :return: The formatted type.
+    :rtype: str
     """
     return var_type.split("'")[1::2][0]
 
 
 def _is_different_type(expected: Any, actual: Any) -> bool:
-    """Evaluates if the two arguments are the same type.
+    """Evaluate if the two arguments are the same type.
 
     :param expected: The expected object.
     :type expected: Any
@@ -165,7 +170,7 @@ def _is_different_type(expected: Any, actual: Any) -> bool:
 
 
 def _find_string_comparison_errors(expected: str, actual: str) -> list:
-    """Handles string comparison for asserting equivalency.
+    """Handle string comparison for asserting equivalency.
 
     :param expected: The expected string.
     :type expected: str
@@ -198,9 +203,8 @@ def _find_string_comparison_errors(expected: str, actual: str) -> list:
     return errors
 
 
-def _find_incorrect_char(expected: str, actual: str) -> str | None:
-    """Finds the index of the first actual character that does not match
-    the expected character.
+def _find_incorrect_char(expected: str, actual: str) -> str:
+    """Find the index of the first actual char that doesn't match expected.
 
     :param expected: The expected string.
     :type expected: str
@@ -221,10 +225,10 @@ def _find_incorrect_char(expected: str, actual: str) -> str | None:
 def _check_trailing_newline(expected: str, actual: str) -> str | None:
     """Check the actual string for common errors.
 
-    :param actual: The actual string.
-    :type actual: str
     :param expected: The expected string.
     :type expected: str
+    :param actual: The actual string.
+    :type actual: str
     :return: A string to concatenate to the error if there are
         common errors, otherwise None.
     :rtype: str | None

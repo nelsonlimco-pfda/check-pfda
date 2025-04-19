@@ -179,9 +179,9 @@ def _find_string_comparison_errors(expected: str, actual: str) -> list:
     actual_len = len(actual)
     # Enforce a length limit in case a student accidentally makes
     # an enormous string.
-    length_check = _check_length_limit(actual, STRING_LEN_LIMIT)
-    if length_check:
-        errors.append(length_check)
+    check_length_error_msg = _check_length_limit(actual, STRING_LEN_LIMIT)
+    if check_length_error_msg:
+        errors.append(check_length_error_msg)
         return errors
     check_functions = [_check_trailing_newline, _check_double_spaces]
     for f in check_functions:

@@ -1,4 +1,6 @@
-tests:
+testing:
   verbosity: 2
-  classroom: "utd-angm2305-25s-classroom"
   tests-repo-url: "https://raw.githubusercontent.com/nelsonlimco-pfda/autograder-tests/"
+admin:
+  classroom: "utd-angm2305-25s-classroom"
+  key: ""

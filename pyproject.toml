@@ -15,8 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
-check = "src.check-pfda.cli:check_code"
-check-instructor = "src.check-pfda.cli:admin"
+pfda = "check_pfda.cli:cli"
 
 [tool.setuptools]
 include-package-data = true

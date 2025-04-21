@@ -2,8 +2,9 @@
 
 > Compatibility goes here
 
-Check-pfda is a package for programming instructors that removes student access to 
-unit tests and provides helpful, readable feedback for beginner programmers.
+Check-pfda is a package for programming instructors that removes unit tests from 
+student repositories and provides helpful error messages written for beginner
+programmers.
 
 ## Installation
 

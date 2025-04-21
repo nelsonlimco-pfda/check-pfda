@@ -15,13 +15,14 @@ dependencies = [
 ]
 
 [project.scripts]
-check = "pfda_tester.src.cli:run_test"
+check = "src.check-pfda.cli:check_code"
+check-instructor = "src.check-pfda.cli:admin"
 
 [tool.setuptools]
 include-package-data = true
 
-[tool.setuptools.packages.find]
-where = ["."]
+#[tool.setuptools.packages.find]
+#where = ["."]
 
 [tool.pydoclint]
 style = 'sphinx'

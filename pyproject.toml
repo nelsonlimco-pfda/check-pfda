@@ -20,9 +20,6 @@ pfda = "check_pfda.cli:cli"
 [tool.setuptools]
 include-package-data = true
 
-#[tool.setuptools.packages.find]
-#where = ["."]
-
 [tool.pydoclint]
 style = 'sphinx'
 exclude = '\.git|\.venv'

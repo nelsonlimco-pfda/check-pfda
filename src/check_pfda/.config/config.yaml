@@ -1,5 +1,5 @@
 tests:
   tests_repo_url: "https://raw.githubusercontent.com/nelsonlimco-pfda/autograder-tests/main/"
   test_id_map:
-    hello_world: "c00/test_helloworld"
+    helloworld: "c00/test_helloworld"
     favorite_artist: "c01/test_favoriteartist"

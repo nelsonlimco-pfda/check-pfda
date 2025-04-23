@@ -8,13 +8,23 @@ import yaml
 
 def get_tests(assignment_id: str) -> str:
     """Get tests for a given assignment"""
-    # Get the path to the current file (http.py), then go up one directory
     tests_repo_url = _construct_test_url(assignment_id)
     try:
-        r = requests.get(tests_repo_url)
+        r = requests.get(tests_repo_url, timeout=10)
         r.raise_for_status()
-    except requests.exceptions.HTTPError as e:
-        echo(f"HTTP error: {e}")
+    except requests.exceptions.RequestException as e:
+        click.secho(f"Error fetching test file for assignment '"
+                    f"{assignment_id}': {e}", fg="red", bold=True)
+        sys.exit(1)
+
+    if not r.text.strip():
+        click.secho("Error: Received empty test file. Contact your "
+                    "instructor", fg="red", bold=True)
+        sys.exit(1)
+
+    if "def test_" not in r.text:
+        click.secho("Warning: This may not be a valid test file.", fg="yellow")
+
     return r.text
 
 
@@ -27,6 +37,7 @@ def _construct_test_url(assignment_id):
     # echo(f"{config["tests"]}")
     # Access the URL or id_map from the config
     tests_repo_url = (f"{config['tests']['tests_repo_url']}"
-                      f"{config['tests']['test_id_map'][assignment_id]}.py?now=0423")
+                      f"{config['tests']['test_id_map'][assignment_id]}.py?"
+                      f"now=0423")
     echo(f"Tests repo url: {tests_repo_url}")
     return tests_repo_url

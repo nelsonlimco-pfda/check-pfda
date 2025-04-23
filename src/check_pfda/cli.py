@@ -12,14 +12,12 @@ def cli():
 
 
 @cli.command()
-@click.argument('assignment_id')
 @click.option(
     '-v',
     '--verbosity',
     count=True,
     help='Verbosity of test output'
 )
-def check(assignment_id: str, verbosity: int) -> None:
+def check(verbosity: int) -> None:
     """Run student checks."""
-    click.echo(f"Checking {assignment_id}...")
-    check_student_code(assignment_id, verbosity)
+    check_student_code(verbosity)

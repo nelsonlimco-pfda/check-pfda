@@ -5,6 +5,8 @@ from importlib import import_module
 from io import StringIO
 from typing import Any
 
+from click import echo
+
 import py.path
 
 import pytest

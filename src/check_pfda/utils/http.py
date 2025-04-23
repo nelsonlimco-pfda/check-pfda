@@ -10,7 +10,12 @@ def get_tests(assignment_id: str) -> str:
     """Get tests for a given assignment"""
     # Get the path to the current file (http.py), then go up one directory
     tests_repo_url = _construct_test_url(assignment_id)
-    echo(f"Tests repo url: {tests_repo_url}")
+    try:
+        r = requests.get(tests_repo_url)
+        r.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        echo(f"HTTP error: {e}")
+    return r.text
 
 
 def _construct_test_url(assignment_id):
@@ -22,5 +27,6 @@ def _construct_test_url(assignment_id):
     # echo(f"{config["tests"]}")
     # Access the URL or id_map from the config
     tests_repo_url = (f"{config['tests']['tests_repo_url']}"
-                      f"{config['tests']['test_id_map'][assignment_id]}.py")
+                      f"{config['tests']['test_id_map'][assignment_id]}.py?now=0423")
+    echo(f"Tests repo url: {tests_repo_url}")
     return tests_repo_url

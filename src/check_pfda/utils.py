@@ -3,6 +3,7 @@ import os
 import sys
 from importlib import import_module
 from io import StringIO
+from pathlib import Path
 from typing import Any
 
 import click
@@ -323,3 +324,16 @@ def _construct_test_url(assignment_id: str) -> str:
             return full_url
 
     raise ValueError(f"Assignment ID '{assignment_id}' not found in config.")
+
+
+def get_module_in_src() -> str:
+    """Get the name of the assignment the student is working on."""
+    src_dir = Path.cwd() / "src"
+    py_files = list(src_dir.glob("*.py"))
+    if not py_files:
+        raise FileNotFoundError("No Python module found in the src/"
+                                " directory.")
+    if len(py_files) > 1:
+        raise RuntimeError("Multiple Python modules found in src/."
+                           " Expected only one.")
+    return py_files[0].stem

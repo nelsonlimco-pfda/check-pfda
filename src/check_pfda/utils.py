@@ -270,7 +270,7 @@ def _check_trailing_newline(expected: str, actual: str) -> str | None:
 
 
 def _check_double_spaces(expected: str, actual: str) -> str | None:
-    """Check the actual string for common errors.
+    """Check the actual string for double spaces.
 
     :param expected: The expected string.
     :type expected: str
@@ -280,7 +280,6 @@ def _check_double_spaces(expected: str, actual: str) -> str | None:
         common errors, otherwise None.
     :rtype: str | None
     """
-    # Check for double spaces.
     if "  " in actual and "  " not in expected:
         return (f"There are two spaces at index {actual.index('  ')} "
                 f"of your program/function's output.")
@@ -304,14 +303,23 @@ def _check_length_limit(actual: str, limit: int) -> str | None:
                 f"Limit is: {limit}")
 
 
-def _construct_test_url(assignment_id):
-    """Construct the url to get the test from."""
+def _construct_test_url(assignment_id: str) -> str:
+    """Construct the URL to fetch the test file for a given assignment ID."""
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     config_path = os.path.join(base_dir, "check_pfda", "config.yaml")
+
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
-    tests_repo_url = (f"{config['tests']['tests_repo_url']}"
-                      f"{config['tests']['test_id_map'][assignment_id]}.py?"
-                      f"now=0423")
-    click.echo(f"Tests repo url: {tests_repo_url}")
-    return tests_repo_url
+
+    base_url = config["tests"]["tests_repo_url"]
+
+    for module_dir, assignments in config["tests"].items():
+        if module_dir == "tests_repo_url":
+            continue
+        if assignment_id in assignments:
+            test_path = f"{module_dir}/test_{assignment_id}.py?now=0423"
+            full_url = f"{base_url}{test_path}"
+            click.echo(f"Tests repo url is: {full_url}")
+            return full_url
+
+    raise ValueError(f"Assignment ID '{assignment_id}' not found in config.")

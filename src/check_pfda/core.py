@@ -1,11 +1,15 @@
 """Collect tests and run them on supplied code."""
 
-from click import echo
 import os
-import pytest
-from tempfile import NamedTemporaryFile, TemporaryDirectory
-from .utils.http import get_tests
 from pathlib import Path
+from tempfile import NamedTemporaryFile
+
+
+from check_pfda.utils import get_tests
+
+from click import echo
+
+import pytest
 
 
 def check_student_code(verbosity: int) -> None:
@@ -18,10 +22,8 @@ def check_student_code(verbosity: int) -> None:
     try:
         temp_file.write(tests.encode("utf-8"))
         temp_file.flush()
-        temp_file.close()  # Close it so that pytest (or whatever) can access it
+        temp_file.close()
 
-        # Now you can safely use it, e.g.:
-        # result = subprocess.run(["pytest", temp_file.name])
         echo(f"Temp test file at: {temp_file.name}")
         args = [temp_file.name]
         if verbosity > 0:
@@ -34,10 +36,13 @@ def check_student_code(verbosity: int) -> None:
 
 
 def _get_module_in_src() -> str:
+    """Get the name of the assignment the student is working on."""
     src_dir = Path.cwd() / "src"
     py_files = list(src_dir.glob("*.py"))
     if not py_files:
-        raise FileNotFoundError("No Python module found in the src/ directory.")
+        raise FileNotFoundError("No Python module found in the src/"
+                                " directory.")
     if len(py_files) > 1:
-        raise RuntimeError("Multiple Python modules found in src/. Expected only one.")
-    return str(py_files[0].name[:-3])  # just the filename, not the full path
+        raise RuntimeError("Multiple Python modules found in src/."
+                           " Expected only one.")
+    return py_files[0].stem

@@ -50,4 +50,5 @@ def check_student_code(verbosity: int, debug: bool = False) -> None:
     finally:
         os.remove(temp_file.name)
         echo("Removed temp test file.")
-    sys.path.remove(cwd_src)
+    if cwd_src in sys.path:
+        sys.path.remove(cwd_src)

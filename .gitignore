@@ -172,3 +172,9 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Temporary test imports
+.test_static_imports
+
+# JetBrains
+.idea

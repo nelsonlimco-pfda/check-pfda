@@ -18,6 +18,12 @@ def cli():
     count=True,
     help='Verbosity of test output'
 )
-def check(verbosity: int) -> None:
+@click.option(
+    '-d',
+    '--debug',
+    is_flag=True,
+    help='Swap to offline tests'
+)
+def check(verbosity: int, debug: bool) -> None:
     """Run student checks."""
-    check_student_code(verbosity)
+    check_student_code(verbosity, debug)

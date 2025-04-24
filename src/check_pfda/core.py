@@ -4,6 +4,7 @@ import os
 print(f"PID: {os.getpid()}")
 
 from tempfile import NamedTemporaryFile
+import sys
 
 
 from check_pfda.utils import get_module_in_src, get_tests
@@ -17,12 +18,15 @@ def check_student_code(verbosity: int, debug: bool = False) -> None:
     """Check student code."""
     assignment = get_module_in_src()
     echo(f"Checking assignment {assignment} at verbosity {verbosity}...")
+    cwd_src = os.path.join(os.getcwd(), "src")
+    if cwd_src not in sys.path:
+        sys.path.insert(0, cwd_src)
     if debug:
         secho("\nIN DEBUG MODE\n", fg="blue", bold=True)
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         test_path = os.path.join(base_dir, "check_pfda",
                                  ".test_static_imports",
-                                 "test_hello_world.py")
+                                 f"test_{assignment}.py")
         args = [test_path]
         if verbosity > 0:
             args.append(f"-{'v' * verbosity}")
@@ -46,3 +50,4 @@ def check_student_code(verbosity: int, debug: bool = False) -> None:
     finally:
         os.remove(temp_file.name)
         echo("Removed temp test file.")
+    sys.path.remove(cwd_src)

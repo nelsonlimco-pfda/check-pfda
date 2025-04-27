@@ -2,14 +2,15 @@
 
 > Compatibility goes here
 
-Check-pfda is a package for programming instructors that removes unit tests from 
-student repositories and provides helpful error messages written for beginner
-programmers.
+Check-pfda is a package that tests student code and provides helpful feedback.
 
 ## Installation
+`pip install check-pfda`
+
 
 ### Usage
+1. Navigate to the root directory of a cloned assignment.
+2. Run `pfda check`.
 
 ## Documentation
-
-## Contributing
+> Read The Docs page goes here

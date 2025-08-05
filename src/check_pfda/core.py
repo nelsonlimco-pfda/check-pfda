@@ -7,7 +7,7 @@ from tempfile import NamedTemporaryFile
 import sys
 
 
-from check_pfda.utils import get_module_in_src, get_tests, get_current_assignment
+from check_pfda.utils import get_current_assignment, get_tests
 
 from click import echo, secho
 

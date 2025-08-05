@@ -4,6 +4,7 @@ import sys
 from importlib import import_module
 from io import StringIO
 from pathlib import Path
+import re
 from typing import Any
 
 import click
@@ -111,15 +112,15 @@ def generate_temp_file(filename: str,
     return filepath
 
 
-def get_tests(assignment_id: str) -> str:
+def get_tests(chapter, assignment: str) -> str:
     """Get tests for a given assignment."""
-    tests_repo_url = _construct_test_url(assignment_id)
+    tests_repo_url = _construct_test_url(chapter, assignment)
     try:
         r = requests.get(tests_repo_url, timeout=10)
         r.raise_for_status()
     except requests.exceptions.RequestException as e:
         click.secho(f"Error fetching test file for assignment '"
-                    f"{assignment_id}': {e}", fg="red", bold=True)
+                    f"{assignment}': {e}", fg="red", bold=True)
         sys.exit(1)
 
     if not r.text.strip():
@@ -304,8 +305,7 @@ def _check_length_limit(actual: str, limit: int) -> str | None:
                 f"Limit is: {limit}")
 
 
-def _construct_test_url(assignment_id: str) -> str:
-    """Construct the URL to fetch the test file for a given assignment ID."""
+def _construct_test_url(chapter, assignment: str) -> str:
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     config_path = os.path.join(base_dir, "check_pfda", "config.yaml")
 
@@ -314,16 +314,8 @@ def _construct_test_url(assignment_id: str) -> str:
 
     base_url = config["tests"]["tests_repo_url"]
 
-    for module_dir, assignments in config["tests"].items():
-        if module_dir == "tests_repo_url":
-            continue
-        if assignment_id in assignments:
-            test_path = f"{module_dir}/test_{assignment_id}.py?now=0423"
-            full_url = f"{base_url}{test_path}"
-            click.echo(f"Tests repo url is: {full_url}")
-            return full_url
-
-    raise ValueError(f"Assignment ID '{assignment_id}' not found in config.")
+    # query at the end forces browser to flush cache
+    return f"{base_url}/c{chapter}/test_{assignment}.py?now=0423"
 
 
 def get_module_in_src() -> str:
@@ -337,3 +329,20 @@ def get_module_in_src() -> str:
         raise RuntimeError("Multiple Python modules found in src/."
                            " Expected only one.")
     return py_files[0].stem
+
+
+def get_current_assignment():
+    """
+    Parses a path string to extract chapter and assignment information.
+    return:
+    A dictionary with 'chapter' and 'assignment' if found, otherwise an empty dictionary.
+    """
+    path = str(Path.cwd())
+    match = re.search(r"c(\d+)-lab-(.*?)-bencres-demo", path)
+    if match:
+        chapter = match.group(1).replace('-', '_')
+        assignment = match.group(2).replace('-', '_')
+        return (chapter, assignment)
+        # return {"chapter": chapter, "assignment": assignment}
+    else:
+        return {}

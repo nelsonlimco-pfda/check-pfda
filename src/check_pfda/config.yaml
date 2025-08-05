@@ -1,5 +1,5 @@
 tests:
-  tests_repo_url: "https://raw.githubusercontent.com/nelsonlimco-pfda/autograder-tests/main/"
+  tests_repo_url: "https://raw.githubusercontent.com/nelsonlimco-pfda/autograder-tests/main"
   c00:
     - hello_world
   c01:

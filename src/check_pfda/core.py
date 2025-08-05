@@ -7,7 +7,7 @@ from tempfile import NamedTemporaryFile
 import sys
 
 
-from check_pfda.utils import get_module_in_src, get_tests
+from check_pfda.utils import get_module_in_src, get_tests, get_current_assignment
 
 from click import echo, secho
 
@@ -16,7 +16,7 @@ import pytest
 
 def check_student_code(verbosity: int, debug: bool = False) -> None:
     """Check student code."""
-    assignment = get_module_in_src()
+    chapter, assignment = get_current_assignment()
     echo(f"Checking assignment {assignment} at verbosity {verbosity}...")
     cwd_src = os.path.join(os.getcwd(), "src")
     if cwd_src not in sys.path:
@@ -33,7 +33,7 @@ def check_student_code(verbosity: int, debug: bool = False) -> None:
         exit_code = pytest.main(args)
         echo(f"Pytest finished with exit code {exit_code}")
         return
-    tests = get_tests(assignment)
+    tests = get_tests(chapter, assignment)
 
     temp_file = NamedTemporaryFile(suffix=".py", delete=False)
     try:

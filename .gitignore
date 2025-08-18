@@ -178,3 +178,4 @@ cython_debug/
 
 # JetBrains
 .idea
+.DS_Store

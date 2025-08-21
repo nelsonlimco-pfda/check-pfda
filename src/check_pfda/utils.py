@@ -331,22 +331,6 @@ def get_module_in_src() -> str:
     return py_files[0].stem
 
 
-# def get_current_assignment():
-#     """
-#     Parses a path string to extract chapter and assignment information.
-#     return:
-#     A dictionary with 'chapter' and 'assignment' if found, otherwise an empty dictionary.
-#     """
-#     path = str(Path.cwd())
-#     match = re.search(r"c(\d+)-lab-(.*?)", path)
-#     if match:
-#         chapter = match.group(1).replace('-', '_')
-#         assignment = match.group(2).replace('-', '_')
-#         return (chapter, assignment)
-#         # return {"chapter": chapter, "assignment": assignment}
-#     else:
-#         raise ValueError("Unable to match current assignment. Contact your TA.")
-
 def get_current_assignment():
     """
     Matches the current working directory against a YAML configuration file

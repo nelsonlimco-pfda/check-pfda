@@ -331,18 +331,65 @@ def get_module_in_src() -> str:
     return py_files[0].stem
 
 
+# def get_current_assignment():
+#     """
+#     Parses a path string to extract chapter and assignment information.
+#     return:
+#     A dictionary with 'chapter' and 'assignment' if found, otherwise an empty dictionary.
+#     """
+#     path = str(Path.cwd())
+#     match = re.search(r"c(\d+)-lab-(.*?)", path)
+#     if match:
+#         chapter = match.group(1).replace('-', '_')
+#         assignment = match.group(2).replace('-', '_')
+#         return (chapter, assignment)
+#         # return {"chapter": chapter, "assignment": assignment}
+#     else:
+#         raise ValueError("Unable to match current assignment. Contact your TA.")
+
 def get_current_assignment():
     """
-    Parses a path string to extract chapter and assignment information.
-    return:
-    A dictionary with 'chapter' and 'assignment' if found, otherwise an empty dictionary.
+    Matches the current working directory against a YAML configuration file
+    to find the corresponding chapter and assignment.
+    
+    Args:
+        yaml_file_path (str): Path to the YAML configuration file
+        
+    Returns:
+        dict: A dictionary with 'chapter' and 'assignment' keys if found, 
+              otherwise None
     """
-    path = str(Path.cwd())
-    match = re.search(r"c(\d+)-lab-(.*?)-bencres-demo", path)
-    if match:
-        chapter = match.group(1).replace('-', '_')
-        assignment = match.group(2).replace('-', '_')
-        return (chapter, assignment)
-        # return {"chapter": chapter, "assignment": assignment}
-    else:
-        return {}
+    # Read and parse the YAML file
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    config_path = os.path.join(base_dir, "check_pfda", "config.yaml")
+    try:
+        with open(config_path, 'r') as file:
+            config = yaml.safe_load(file)
+    except FileNotFoundError:
+        print(f"YAML file not found: {config_path}")
+        return None
+    except yaml.YAMLError as e:
+        print(f"Error parsing YAML file: {e}")
+        return None
+    
+    # Get current directory name (not full path)
+    current_dir = Path.cwd().name
+    
+    # Iterate through chapters in the config
+    print(f"current dir is {current_dir}")
+    for chapter_key, assignments in config.get('tests', {}).items():
+        # Skip the tests_repo_url key
+        if chapter_key == 'tests_repo_url':
+            continue
+            
+        if chapter_key in current_dir:
+            print(f"Chapter key found: {chapter_key}")
+            print(f"assignments: {assignments}")
+            for assignment in assignments:
+                if assignment in current_dir.replace("-", "_"):
+                    return {
+                        "chapter": str(chapter_key)[1:],
+                        "assignment": str(assignment).replace("-", "_")
+                    }
+        
+    raise ValueError("Error parsing cwd and matching it against config. Contact your TA.")

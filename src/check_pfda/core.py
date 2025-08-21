@@ -16,7 +16,13 @@ import pytest
 
 def check_student_code(verbosity: int, debug: bool = False) -> None:
     """Check student code."""
-    chapter, assignment = get_current_assignment()
+    try:
+        current = get_current_assignment()
+    except TypeError:
+        print("Unable to match chapter and assignment against cwd. Contact your TA.")
+        return
+    chapter = current["chapter"]
+    assignment = current["assignment"]
     echo(f"Checking assignment {assignment} at verbosity {verbosity}...")
     cwd_src = os.path.join(os.getcwd(), "src")
     if cwd_src not in sys.path:

@@ -39,7 +39,6 @@ def assert_script_exists(module_name: str, accepted_dirs: list) -> None:
     curr_dir = os.getcwd()
     for subfolder in accepted_dirs:
         filename = os.path.join(curr_dir, subfolder, f"{module_name}.py")
-        print(filename)
         if os.path.exists(filename):
             return None
     pytest.fail(reason=f"The script '{module_name}.py' does not exist in "
@@ -360,15 +359,12 @@ def get_current_assignment():
     current_dir = Path.cwd().name
     
     # Iterate through chapters in the config
-    print(f"current dir is {current_dir}")
     for chapter_key, assignments in config.get('tests', {}).items():
         # Skip the tests_repo_url key
         if chapter_key == 'tests_repo_url':
             continue
             
         if chapter_key in current_dir:
-            print(f"Chapter key found: {chapter_key}")
-            print(f"assignments: {assignments}")
             for assignment in assignments:
                 if assignment in current_dir.replace("-", "_"):
                     return {

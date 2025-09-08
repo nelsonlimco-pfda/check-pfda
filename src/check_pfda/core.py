@@ -13,7 +13,7 @@ from click import echo, secho
 import pytest
 
 
-def check_student_code(verbosity: int, debug: bool = False) -> None:
+def check_student_code(verbosity: int = 2, debug: bool = False) -> None:
     """Check student code."""
     try:
         current = get_current_assignment()

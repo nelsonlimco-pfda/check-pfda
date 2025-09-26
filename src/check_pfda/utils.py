@@ -4,7 +4,6 @@ import sys
 from importlib import import_module
 from io import StringIO
 from pathlib import Path
-import re
 from typing import Any
 
 import click
@@ -36,10 +35,12 @@ def assert_script_exists(module_name: str, accepted_dirs: list) -> None:
     :return: None
     :rtype: None
     """
-    curr_dir = os.getcwd()
+    current_path = Path.cwd()
+    if current_path.name == "src":
+        current_path = current_path.parent
     for subfolder in accepted_dirs:
-        filename = os.path.join(curr_dir, subfolder, f"{module_name}.py")
-        if os.path.exists(filename):
+        filename = current_path / subfolder / f"{module_name}.py"
+        if filename.exists():
             return None
     pytest.fail(reason=f"The script '{module_name}.py' does not exist in "
                        f"the accepted directories: {accepted_dirs}.")
@@ -319,7 +320,11 @@ def _construct_test_url(chapter, assignment: str) -> str:
 
 def get_module_in_src() -> str:
     """Get the name of the assignment the student is working on."""
-    src_dir = Path.cwd() / "src"
+    current_path = Path.cwd()
+    if not current_path.name == "src":
+        src_dir = current_path / "src"
+    else:
+        src_dir = current_path
     py_files = list(src_dir.glob("*.py"))
     if not py_files:
         raise FileNotFoundError("No Python module found in the src/"
@@ -356,8 +361,14 @@ def get_current_assignment():
         return None
     
     # Get current directory name (not full path)
-    current_dir = Path.cwd().name
-    
+    current_path = Path.cwd()
+    current_dir = current_path.name
+    if current_dir == "src":
+        current_path = current_path.parent
+        current_dir = current_path.name
+
+    """This logic is necessary because there's no way to 
+    """
     # Iterate through chapters in the config
     for chapter_key, assignments in config.get('tests', {}).items():
         # Skip the tests_repo_url key

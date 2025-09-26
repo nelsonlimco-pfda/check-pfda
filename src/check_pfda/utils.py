@@ -306,6 +306,7 @@ def _check_length_limit(actual: str, limit: int) -> str | None:
 
 
 def _construct_test_url(chapter, assignment: str) -> str:
+    """Construct the URL at which the test lives."""
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     config_path = os.path.join(base_dir, "check_pfda", "config.yaml")
 
@@ -335,17 +336,15 @@ def get_module_in_src() -> str:
     return py_files[0].stem
 
 
-def get_current_assignment():
+def get_current_assignment() -> dict | None:
     """
     Matches the current working directory against a YAML configuration file
     to find the corresponding chapter and assignment.
-    
-    Args:
-        yaml_file_path (str): Path to the YAML configuration file
-        
-    Returns:
-        dict: A dictionary with 'chapter' and 'assignment' keys if found, 
-              otherwise None
+
+    :raises ValueError: When the parsed cwd does not match any assignments in config.yaml.
+
+    :return: A dictionary with 'chapter' and 'assignment' keys if found
+    :rtype: dict | None
     """
     # Read and parse the YAML file
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -367,7 +366,20 @@ def get_current_assignment():
         current_path = current_path.parent
         current_dir = current_path.name
 
-    """This logic is necessary because there's no way to 
+    """This logic is necessary because there's no way to get the name of the current assignment without some
+    external source of assignment names from the student's repo's root dir. This is because assignment names
+    vary in length and student names also vary in length and both may use the same delimiter. For example:
+    
+    pfda-c01-lab-favorite-artist-bencres-demo
+    
+    and
+    
+    pfda-c01-lab-shout-bencres-demo
+    
+    In this case, we can't get 'favorite-artist' or 'shout' without knowing at least one of:
+    
+    1. The student's GitHub username.
+    2. Names of valid assignments.
     """
     # Iterate through chapters in the config
     for chapter_key, assignments in config.get('tests', {}).items():

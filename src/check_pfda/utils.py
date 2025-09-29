@@ -186,7 +186,7 @@ def _format_type(var_type: str) -> str:
     :return: The formatted type.
     :rtype: str
     """
-    return var_type.split("'")[1::2][0]
+    return var_type.split("'")[1::2][0] if var_type else "Your function output None, but is expected to return a value."
 
 
 def _is_different_type(expected: Any, actual: Any) -> bool:

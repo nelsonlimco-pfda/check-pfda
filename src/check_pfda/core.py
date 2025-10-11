@@ -52,8 +52,13 @@ def _log_package_info(log_file: str):
 def check_student_code(verbosity: int = 2, debug = False) -> None:
     """Check student code."""
     # Configure logging
+    root_path = Path.cwd()
+    if root_path.name == "src":
+        root_path = root_path.parent
+
+    src_path = root_path / "src"
     if debug:
-        log_file = os.path.join(os.getcwd(), "debug.log")
+        log_file = os.path.join(root_path, "debug.log")
         _init_logger(log_file)
         logger.debug("Debug mode enabled")
         logger.debug(f"Debug log file: {log_file}")
@@ -77,22 +82,16 @@ def check_student_code(verbosity: int = 2, debug = False) -> None:
     if debug:
         logger.debug(f"Chapter: {chapter}, Assignment: {assignment}")
     
-    cwd_src = os.path.join(os.getcwd(), "src")
-    if cwd_src not in sys.path:
-        sys.path.insert(0, cwd_src)
+    if str(src_path) not in sys.path:
+        sys.path.insert(0, str(src_path))
         if debug:
-            logger.debug(f"Added {cwd_src} to sys.path")
+            logger.debug(f"Added {str(src_path)} to sys.path")
     
     tests = get_tests(chapter, assignment)
     if debug:
         logger.debug(f"Retrieved tests (length: {len(tests)} bytes)")
 
-    # Create .tests directory in repository root
-    current_path = Path.cwd()
-    if current_path.name == "src":
-        current_path = current_path.parent
-    
-    tests_dir = current_path / ".tests"
+    tests_dir = root_path / ".tests"
     tests_dir.mkdir(exist_ok=True)
     
     if debug:
@@ -121,7 +120,7 @@ def check_student_code(verbosity: int = 2, debug = False) -> None:
         if debug:
             logger.exception("Failed to write or run test file")
     
-    if cwd_src in sys.path:
-        sys.path.remove(cwd_src)
+    if str(src_path) in sys.path:
+        sys.path.remove(str(src_path))
         if debug:
-            logger.debug(f"Removed {cwd_src} from sys.path")
+            logger.debug(f"Removed {str(src_path)} from sys.path")

@@ -9,7 +9,7 @@ import platform
 
 from click import echo
 import pytest
-from check_pfda.utils import get_current_assignment, get_tests
+from check_pfda.utils import get_current_assignment, get_tests, _check_src_in_sys_path
 
 
 logger = logging.getLogger(__name__)
@@ -67,25 +67,22 @@ def check_student_code(verbosity: int = 2, debug = False) -> None:
         echo(f"Debug logging enabled. Writing to {log_file}.")
         
     try:
-        current = get_current_assignment()
+        current_assignment = get_current_assignment()
         if debug:
-            logger.debug(f"Current assignment info: {current}")
+            logger.debug(f"Current assignment info: {current_assignment}")
     except TypeError:
         echo("Unable to match chapter and assignment against cwd. Contact your TA.")
         if debug:
             logger.exception("Failed to get current assignment")
         return
-    chapter = current["chapter"]
-    assignment = current["assignment"]
+    chapter = current_assignment["chapter"]
+    assignment = current_assignment["assignment"]
     echo(f"Checking assignment {assignment} at verbosity {verbosity}...")
     
     if debug:
         logger.debug(f"Chapter: {chapter}, Assignment: {assignment}")
-    
-    if str(src_path) not in sys.path:
-        sys.path.insert(0, str(src_path))
-        if debug:
-            logger.debug(f"Added {str(src_path)} to sys.path")
+
+    _check_src_in_sys_path(src_path, debug, logger)
     
     tests = get_tests(chapter, assignment)
     if debug:
@@ -124,3 +121,6 @@ def check_student_code(verbosity: int = 2, debug = False) -> None:
         sys.path.remove(str(src_path))
         if debug:
             logger.debug(f"Removed {str(src_path)} from sys.path")
+
+
+

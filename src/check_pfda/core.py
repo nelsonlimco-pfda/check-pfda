@@ -19,11 +19,15 @@ def check_student_code(verbosity: int = 2, debug = False) -> None:
     """Check student code."""
     # Configure logging
     if debug:
+        log_file = os.path.join(os.getcwd(), "debug.log")
         logging.basicConfig(
             level=logging.DEBUG,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            filename=log_file,
+            filemode='w'
         )
         logger.debug("Debug mode enabled")
+        logger.debug(f"Debug log file: {log_file}")
         
         # Log system information
         logger.debug(f"Python version: {sys.version}")
@@ -47,6 +51,8 @@ def check_student_code(verbosity: int = 2, debug = False) -> None:
         # Log current working directory and sys.path
         logger.debug(f"Current working directory: {os.getcwd()}")
         logger.debug(f"sys.path: {sys.path}")
+        
+        echo(f"Debug logging enabled. Writing to: {log_file}")
     
     try:
         current = get_current_assignment()

@@ -1,7 +1,7 @@
 """Collect tests and run them on supplied code."""
 
 import os
-from tempfile import NamedTemporaryFile
+from pathlib import Path
 import sys
 import logging
 import platform
@@ -80,16 +80,28 @@ def check_student_code(verbosity: int = 2, debug = False) -> None:
     if debug:
         logger.debug(f"Retrieved tests (length: {len(tests)} bytes)")
 
-    temp_file = NamedTemporaryFile(suffix=".py", delete=False)
+    # Create .tests directory in repository root
+    current_path = Path.cwd()
+    if current_path.name == "src":
+        current_path = current_path.parent
+    
+    tests_dir = current_path / ".tests"
+    tests_dir.mkdir(exist_ok=True)
+    
+    if debug:
+        logger.debug(f"Created/verified .tests directory: {tests_dir}")
+    
+    # Write test file to .tests directory
+    test_file_path = tests_dir / f"test_{assignment}.py"
+    
     try:
-        if debug:
-            logger.debug(f"Created temporary test file: {temp_file.name}")
+        with open(test_file_path, "w", encoding="utf-8") as f:
+            f.write(tests)
         
-        temp_file.write(tests.encode("utf-8"))
-        temp_file.flush()
-        temp_file.close()
+        if debug:
+            logger.debug(f"Wrote test file to: {test_file_path}")
 
-        args = [temp_file.name]
+        args = [str(test_file_path)]
         if verbosity > 0:
             args.append(f"-{'v' * verbosity}")
         
@@ -97,10 +109,10 @@ def check_student_code(verbosity: int = 2, debug = False) -> None:
             logger.debug(f"Running pytest with args: {args}")
         
         pytest.main(args)
-    finally:
-        os.remove(temp_file.name)
+    except Exception as e:
+        echo(f"Error writing or running test file: {e}")
         if debug:
-            logger.debug(f"Removed temporary test file: {temp_file.name}")
+            logger.exception("Failed to write or run test file")
     
     if cwd_src in sys.path:
         sys.path.remove(cwd_src)

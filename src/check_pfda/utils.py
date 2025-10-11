@@ -397,8 +397,16 @@ def get_current_assignment() -> dict | None:
         
     raise ValueError("Error parsing cwd and matching it against config. Contact your TA.")
 
-def _check_src_in_sys_path(src_path: Path, debug: bool, logger):
+
+def _add_src_to_sys_path(src_path: Path, debug: bool, logger):
     if str(src_path) not in sys.path:
         sys.path.insert(0, str(src_path))
         if debug:
             logger.debug(f"Added {str(src_path)} to sys.path")
+
+
+def _remove_src_from_sys_path(debug: bool, src_path: Path, logger):
+    if str(src_path) in sys.path:
+        sys.path.remove(str(src_path))
+        if debug:
+            logger.debug(f"Removed {str(src_path)} from sys.path")

@@ -9,7 +9,7 @@ import platform
 
 from click import echo
 import pytest
-from check_pfda.utils import get_current_assignment, get_tests, _check_src_in_sys_path
+from check_pfda.utils import get_current_assignment, get_tests, _add_src_to_sys_path, _remove_src_from_sys_path
 
 
 logger = logging.getLogger(__name__)
@@ -82,8 +82,7 @@ def check_student_code(verbosity: int = 2, debug = False) -> None:
     if debug:
         logger.debug(f"Chapter: {chapter}, Assignment: {assignment}")
 
-    _check_src_in_sys_path(src_path, debug, logger)
-    
+
     tests = get_tests(chapter, assignment)
     if debug:
         logger.debug(f"Retrieved tests (length: {len(tests)} bytes)")
@@ -96,31 +95,29 @@ def check_student_code(verbosity: int = 2, debug = False) -> None:
     
     # Write test file to .tests directory
     test_file_path = tests_dir / f"test_{assignment}.py"
-    
+
+    _add_src_to_sys_path(src_path, debug, logger)
+    _pytest_student_code(debug, test_file_path, tests, verbosity)
+    _remove_src_from_sys_path(debug, src_path, logger)
+
+
+def _pytest_student_code(debug: bool, test_file_path: Path, tests, verbosity: int):
     try:
         with open(test_file_path, "w", encoding="utf-8") as f:
             f.write(tests)
-        
+
         if debug:
             logger.debug(f"Wrote test file to: {test_file_path}")
 
         args = [str(test_file_path)]
         if verbosity > 0:
             args.append(f"-{'v' * verbosity}")
-        
+
         if debug:
             logger.debug(f"Running pytest with args: {args}")
-        
+
         pytest.main(args)
     except Exception as e:
         echo(f"Error writing or running test file: {e}")
         if debug:
             logger.exception("Failed to write or run test file")
-    
-    if str(src_path) in sys.path:
-        sys.path.remove(str(src_path))
-        if debug:
-            logger.debug(f"Removed {str(src_path)} from sys.path")
-
-
-

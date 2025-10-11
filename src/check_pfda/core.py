@@ -10,7 +10,7 @@ import pytest
 from check_pfda.utils import get_current_assignment, get_tests
 
 
-def check_student_code(verbosity: int = 2) -> None:
+def check_student_code(verbosity: int = 2, debug = False) -> None:
     """Check student code."""
     try:
         current = get_current_assignment()

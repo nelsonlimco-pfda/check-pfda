@@ -15,6 +15,57 @@ from check_pfda.utils import get_current_assignment, get_tests, _add_src_to_sys_
 logger = logging.getLogger(__name__)
 
 
+def check_student_code(verbosity: int = 2, debug=False) -> None:
+    """Main check-pfda runner. Outputs results of tests to scripts in `src` to stdout."""
+    # Configure logging
+    root_path = Path.cwd()
+    if root_path.name == "src":
+        root_path = root_path.parent
+
+    src_path = root_path / "src"
+    if debug:
+        log_file = os.path.join(root_path, "debug.log")
+        _init_logger(log_file)
+        logger.debug("Debug mode enabled")
+        logger.debug(f"Debug log file: {log_file}")
+        _log_platform_info()
+        _log_package_info(log_file)
+        echo(f"Debug logging enabled. Writing to {log_file}.")
+
+    try:
+        current_assignment = get_current_assignment()
+        if debug:
+            logger.debug(f"Current assignment info: {current_assignment}")
+    except TypeError:
+        echo("Unable to match chapter and assignment against cwd. Contact your TA.")
+        if debug:
+            logger.exception("Failed to get current assignment")
+        return
+    chapter = current_assignment["chapter"]
+    assignment = current_assignment["assignment"]
+    echo(f"Checking assignment {assignment} at verbosity {verbosity}...")
+
+    if debug:
+        logger.debug(f"Chapter: {chapter}, Assignment: {assignment}")
+
+    tests = get_tests(chapter, assignment)
+    if debug:
+        logger.debug(f"Retrieved tests (length: {len(tests)} bytes)")
+
+    tests_dir = root_path / ".tests"
+    tests_dir.mkdir(exist_ok=True)
+
+    if debug:
+        logger.debug(f"Created/verified .tests directory: {tests_dir}")
+
+    # Write test file to .tests directory
+    test_file_path = tests_dir / f"test_{assignment}.py"
+
+    _add_src_to_sys_path(src_path, debug, logger)
+    _pytest_student_code(debug, test_file_path, tests, verbosity)
+    _remove_src_from_sys_path(debug, src_path, logger)
+
+
 def _init_logger(log_file: str):
     logging.basicConfig(
         level=logging.DEBUG,
@@ -47,58 +98,6 @@ def _log_package_info(log_file: str):
     # Log current working directory and sys.path
     logger.debug(f"Current working directory: {os.getcwd()}")
     logger.debug(f"sys.path: {sys.path}")
-
-
-def check_student_code(verbosity: int = 2, debug = False) -> None:
-    """Check student code."""
-    # Configure logging
-    root_path = Path.cwd()
-    if root_path.name == "src":
-        root_path = root_path.parent
-
-    src_path = root_path / "src"
-    if debug:
-        log_file = os.path.join(root_path, "debug.log")
-        _init_logger(log_file)
-        logger.debug("Debug mode enabled")
-        logger.debug(f"Debug log file: {log_file}")
-        _log_platform_info()
-        _log_package_info(log_file)
-        echo(f"Debug logging enabled. Writing to {log_file}.")
-        
-    try:
-        current_assignment = get_current_assignment()
-        if debug:
-            logger.debug(f"Current assignment info: {current_assignment}")
-    except TypeError:
-        echo("Unable to match chapter and assignment against cwd. Contact your TA.")
-        if debug:
-            logger.exception("Failed to get current assignment")
-        return
-    chapter = current_assignment["chapter"]
-    assignment = current_assignment["assignment"]
-    echo(f"Checking assignment {assignment} at verbosity {verbosity}...")
-    
-    if debug:
-        logger.debug(f"Chapter: {chapter}, Assignment: {assignment}")
-
-
-    tests = get_tests(chapter, assignment)
-    if debug:
-        logger.debug(f"Retrieved tests (length: {len(tests)} bytes)")
-
-    tests_dir = root_path / ".tests"
-    tests_dir.mkdir(exist_ok=True)
-    
-    if debug:
-        logger.debug(f"Created/verified .tests directory: {tests_dir}")
-    
-    # Write test file to .tests directory
-    test_file_path = tests_dir / f"test_{assignment}.py"
-
-    _add_src_to_sys_path(src_path, debug, logger)
-    _pytest_student_code(debug, test_file_path, tests, verbosity)
-    _remove_src_from_sys_path(debug, src_path, logger)
 
 
 def _pytest_student_code(debug: bool, test_file_path: Path, tests, verbosity: int):

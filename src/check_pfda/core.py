@@ -34,29 +34,24 @@ def check_student_code(verbosity: int = 2, debug=False) -> None:
 
     try:
         current_assignment = get_current_assignment()
-        if debug:
-            logger.debug(f"Current assignment info: {current_assignment}")
+        logger.debug(f"Current assignment info: {current_assignment}")
     except TypeError:
         echo("Unable to match chapter and assignment against cwd. Contact your TA.")
-        if debug:
-            logger.exception("Failed to get current assignment")
+        logger.exception("Failed to get current assignment")
         return
     chapter = current_assignment["chapter"]
     assignment = current_assignment["assignment"]
     echo(f"Checking assignment {assignment} at verbosity {verbosity}...")
 
-    if debug:
-        logger.debug(f"Chapter: {chapter}, Assignment: {assignment}")
+    logger.debug(f"Chapter: {chapter}, Assignment: {assignment}")
 
     tests = get_tests(chapter, assignment)
-    if debug:
-        logger.debug(f"Retrieved tests (length: {len(tests)} bytes)")
+    logger.debug(f"Retrieved tests (length: {len(tests)} bytes)")
 
     tests_dir = root_path / ".tests"
     tests_dir.mkdir(exist_ok=True)
 
-    if debug:
-        logger.debug(f"Created/verified .tests directory: {tests_dir}")
+    logger.debug(f"Created/verified .tests directory: {tests_dir}")
 
     # Write test file to .tests directory
     test_file_path = tests_dir / f"test_{assignment}.py"

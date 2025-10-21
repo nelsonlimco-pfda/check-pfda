@@ -100,18 +100,16 @@ def _pytest_student_code(debug: bool, test_file_path: Path, tests, verbosity: in
         with open(test_file_path, "w", encoding="utf-8") as f:
             f.write(tests)
 
-        if debug:
-            logger.debug(f"Wrote test file to: {test_file_path}")
+        logger.debug(f"Wrote test file to: {test_file_path}")
 
         args = [str(test_file_path)]
         if verbosity > 0:
             args.append(f"-{'v' * verbosity}")
 
-        if debug:
-            logger.debug(f"Running pytest with args: {args}")
+        logger.debug(f"Running pytest with args: {args}")
 
-        pytest.main(args)
+        out = pytest.main(args)
+        logger.debug(f"Pytest output: {out}")
     except Exception as e:
         echo(f"Error writing or running test file: {e}")
-        if debug:
-            logger.exception("Failed to write or run test file")
+        logger.exception("Failed to write or run test file")

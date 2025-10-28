@@ -1,4 +1,5 @@
 """Command-line interface for package usage."""
+import logging
 
 import click
 
@@ -20,4 +21,4 @@ from .core import check_student_code
 )
 def cli(verbosity, debug):
     """Run student code checks."""
-    check_student_code(verbosity=verbosity, debug=debug)
+    check_student_code(verbosity=verbosity, logger_level=logging.DEBUG if debug else logging.INFO)

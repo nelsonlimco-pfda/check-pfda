@@ -14,8 +14,13 @@ from check_pfda.utils import get_current_assignment, get_tests, _add_src_to_sys_
 
 logger = logging.getLogger(__name__)
 
+REPO_PATH = Path.cwd()
+REPO_SRC_PATH = REPO_PATH / "src"
+REPO_TESTS_DIR = REPO_PATH / ".tests"
+LOG_FILE = REPO_PATH / "debug.log"
 
-def check_student_code(verbosity: int = 2, debug=False) -> None:
+
+def check_student_code(verbosity: int = 2, logger_level=logging.INFO) -> None:
     """Main check-pfda runner. Outputs results of tests to scripts in `src` to stdout."""
     # Configure logging
     root_path = Path.cwd()

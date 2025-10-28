@@ -12,7 +12,7 @@ import pytest
 from check_pfda.utils import get_current_assignment, get_tests, _add_src_to_sys_path, _remove_src_from_sys_path, _recurse_to_repo_path
 
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 REPO_PATH = _recurse_to_repo_path(Path.cwd())
 REPO_SRC_PATH = REPO_PATH / "src"
@@ -22,38 +22,34 @@ LOG_FILE = REPO_PATH / "debug.log"
 
 def check_student_code(verbosity: int = 2, logger_level=logging.INFO) -> None:
     """Main check-pfda runner. Outputs results of tests to scripts in `src` to stdout."""
-    # Configure logging
-
     _init_logger(LOG_FILE, logger_level)
-
-
     try:
         current_assignment = get_current_assignment()
-        logger.debug(f"Current assignment info: {current_assignment}")
+        LOGGER.debug(f"Current assignment info: {current_assignment}")
     except TypeError:
         echo("Unable to match chapter and assignment against cwd. Contact your TA.")
-        logger.exception("Failed to get current assignment")
+        LOGGER.exception("Failed to get current assignment")
         return
     chapter = current_assignment["chapter"]
     assignment = current_assignment["assignment"]
     echo(f"Checking assignment {assignment} at verbosity {verbosity}...")
 
-    logger.debug(f"Chapter: {chapter}, Assignment: {assignment}")
+    LOGGER.debug(f"Chapter: {chapter}, Assignment: {assignment}")
 
     tests = get_tests(chapter, assignment)
-    logger.debug(f"Retrieved tests (length: {len(tests)} bytes)")
+    LOGGER.debug(f"Retrieved tests (length: {len(tests)} bytes)")
 
     tests_dir = root_path / ".tests"
     tests_dir.mkdir(exist_ok=True)
 
-    logger.debug(f"Created/verified .tests directory: {tests_dir}")
+    LOGGER.debug(f"Created/verified .tests directory: {tests_dir}")
 
     # Write test file to .tests directory
     test_file_path = tests_dir / f"test_{assignment}.py"
 
-    _add_src_to_sys_path(src_path, debug, logger)
+    _add_src_to_sys_path(src_path, debug, LOGGER)
     _pytest_student_code(debug, test_file_path, tests, verbosity)
-    _remove_src_from_sys_path(debug, src_path, logger)
+    _remove_src_from_sys_path(debug, src_path, LOGGER)
 
 
 def _init_logger(log_file: Path, log_level):
@@ -67,29 +63,29 @@ def _init_logger(log_file: Path, log_level):
     )
     _log_platform_info()
     _log_package_info()
-    logger.debug(f"Current working directory: {os.getcwd()}")
-    logger.debug(f"sys.path: {sys.path}")
+    LOGGER.debug(f"Current working directory: {os.getcwd()}")
+    LOGGER.debug(f"sys.path: {sys.path}")
 
 
 def _log_platform_info():
-    logger.debug(f"Python version: {sys.version}")
-    logger.debug(f"Python executable: {sys.executable}")
-    logger.debug(f"Platform: {platform.platform()}")
-    logger.debug(f"System: {platform.system()} {platform.release()}")
-    logger.debug(f"Machine: {platform.machine()}")
-    logger.debug(f"Processor: {platform.processor()}")
+    LOGGER.debug(f"Python version: {sys.version}")
+    LOGGER.debug(f"Python executable: {sys.executable}")
+    LOGGER.debug(f"Platform: {platform.platform()}")
+    LOGGER.debug(f"System: {platform.system()} {platform.release()}")
+    LOGGER.debug(f"Machine: {platform.machine()}")
+    LOGGER.debug(f"Processor: {platform.processor()}")
 
 
 def _log_package_info():
-    logger.debug(f"Installed packages:")
+    LOGGER.debug(f"Installed packages:")
     try:
         import pkg_resources
         installed_packages = [(d.project_name, d.version) for d in pkg_resources.working_set]
         installed_packages.sort()
         for package_name, version in installed_packages:
-            logger.debug(f"  {package_name}=={version}")
+            LOGGER.debug(f"  {package_name}=={version}")
     except Exception as e:
-        logger.debug(f"Unable to retrieve package information: {e}")
+        LOGGER.debug(f"Unable to retrieve package information: {e}")
 
 
 def _pytest_student_code(debug: bool, test_file_path: Path, tests, verbosity: int):
@@ -97,16 +93,16 @@ def _pytest_student_code(debug: bool, test_file_path: Path, tests, verbosity: in
         with open(test_file_path, "w", encoding="utf-8") as f:
             f.write(tests)
 
-        logger.debug(f"Wrote test file to: {test_file_path}")
+        LOGGER.debug(f"Wrote test file to: {test_file_path}")
 
         args = [str(test_file_path)]
         if verbosity > 0:
             args.append(f"-{'v' * verbosity}")
 
-        logger.debug(f"Running pytest with args: {args}")
+        LOGGER.debug(f"Running pytest with args: {args}")
 
         out = pytest.main(args)
-        logger.debug(f"Pytest output: {out}")
+        LOGGER.debug(f"Pytest output: {out}")
     except Exception as e:
         echo(f"Error writing or running test file: {e}")
-        logger.exception("Failed to write or run test file")
+        LOGGER.exception("Failed to write or run test file")

@@ -336,7 +336,7 @@ def get_module_in_src() -> str:
     return py_files[0].stem
 
 
-def get_current_assignment() -> dict | None:
+def get_current_assignment(repo_path: Path) -> dict | None:
     """
     Matches the current working directory against a YAML configuration file
     to find the corresponding chapter and assignment.
@@ -359,13 +359,6 @@ def get_current_assignment() -> dict | None:
         print(f"Error parsing YAML file: {e}")
         return None
     
-    # Get current directory name (not full path)
-    current_path = Path.cwd()
-    current_dir = current_path.name
-    if current_dir == "src":
-        current_path = current_path.parent
-        current_dir = current_path.name
-
     """This logic is necessary because there's no way to get the name of the current assignment without some
     external source of assignment names from the student's repo's root dir. This is because assignment names
     vary in length and student names also vary in length and both may use the same delimiter. For example:
@@ -382,27 +375,27 @@ def get_current_assignment() -> dict | None:
     2. Names of valid assignments.
     """
     # Iterate through chapters in the config
+    repo_path = str(repo_path)
+    if "c07" in repo_path or "c08" in repo_path:
+        raise ValueError("C07 and C08 do not have any automated tests. Refer to the README for more information.")
     for chapter_key, assignments in config.get('tests', {}).items():
         # Skip the tests_repo_url key
         if chapter_key == 'tests_repo_url':
             continue
-            
-        if chapter_key in current_dir:
-            for assignment in assignments:
-                if assignment in current_dir.replace("-", "_"):
-                    return {
-                        "chapter": str(chapter_key)[1:],
-                        "assignment": str(assignment).replace("-", "_")
-                    }
+        if chapter_key not in repo_path:
+            continue
+        for assignment in assignments:
+            if assignment in repo_path.replace("-", "_"):
+                return {"chapter": str(chapter_key)[1:],
+                        "assignment": str(assignment).replace("-", "_")}
         
     raise ValueError("Error parsing cwd and matching it against config. Contact your TA.")
 
 
-def _add_src_to_sys_path(src_path: Path, debug: bool, logger):
+def _add_src_to_sys_path(src_path: Path, logger):
     if str(src_path) not in sys.path:
         sys.path.insert(0, str(src_path))
-        if debug:
-            logger.debug(f"Added {str(src_path)} to sys.path")
+        logger.debug(f"Added {str(src_path)} to sys.path")
 
 
 def _remove_src_from_sys_path(debug: bool, src_path: Path, logger):

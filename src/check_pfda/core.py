@@ -9,12 +9,12 @@ import platform
 
 from click import echo
 import pytest
-from check_pfda.utils import get_current_assignment, get_tests, _add_src_to_sys_path, _remove_src_from_sys_path
+from check_pfda.utils import get_current_assignment, get_tests, _add_src_to_sys_path, _remove_src_from_sys_path, _recurse_to_repo_path
 
 
 logger = logging.getLogger(__name__)
 
-REPO_PATH = Path.cwd()
+REPO_PATH = _recurse_to_repo_path(Path.cwd())
 REPO_SRC_PATH = REPO_PATH / "src"
 REPO_TESTS_DIR = REPO_PATH / ".tests"
 LOG_FILE = REPO_PATH / "debug.log"
@@ -23,19 +23,9 @@ LOG_FILE = REPO_PATH / "debug.log"
 def check_student_code(verbosity: int = 2, logger_level=logging.INFO) -> None:
     """Main check-pfda runner. Outputs results of tests to scripts in `src` to stdout."""
     # Configure logging
-    root_path = Path.cwd()
-    if root_path.name == "src":
-        root_path = root_path.parent
 
-    src_path = root_path / "src"
-    if debug:
-        log_file = os.path.join(root_path, "debug.log")
-        _init_logger(log_file)
-        logger.debug("Debug mode enabled")
-        logger.debug(f"Debug log file: {log_file}")
-        _log_platform_info()
-        _log_package_info(log_file)
-        echo(f"Debug logging enabled. Writing to {log_file}.")
+    _init_logger(LOG_FILE, logger_level)
+
 
     try:
         current_assignment = get_current_assignment()
@@ -66,13 +56,19 @@ def check_student_code(verbosity: int = 2, logger_level=logging.INFO) -> None:
     _remove_src_from_sys_path(debug, src_path, logger)
 
 
-def _init_logger(log_file: str):
+def _init_logger(log_file: Path, log_level):
+    if not log_level == logging.DEBUG:
+        return
     logging.basicConfig(
         level=logging.DEBUG,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         filename=log_file,
         filemode='w'
     )
+    _log_platform_info()
+    _log_package_info()
+    logger.debug(f"Current working directory: {os.getcwd()}")
+    logger.debug(f"sys.path: {sys.path}")
 
 
 def _log_platform_info():
@@ -84,7 +80,7 @@ def _log_platform_info():
     logger.debug(f"Processor: {platform.processor()}")
 
 
-def _log_package_info(log_file: str):
+def _log_package_info():
     logger.debug(f"Installed packages:")
     try:
         import pkg_resources
@@ -94,10 +90,6 @@ def _log_package_info(log_file: str):
             logger.debug(f"  {package_name}=={version}")
     except Exception as e:
         logger.debug(f"Unable to retrieve package information: {e}")
-
-    # Log current working directory and sys.path
-    logger.debug(f"Current working directory: {os.getcwd()}")
-    logger.debug(f"sys.path: {sys.path}")
 
 
 def _pytest_student_code(debug: bool, test_file_path: Path, tests, verbosity: int):

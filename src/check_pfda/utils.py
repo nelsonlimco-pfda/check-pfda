@@ -410,3 +410,9 @@ def _remove_src_from_sys_path(debug: bool, src_path: Path, logger):
         sys.path.remove(str(src_path))
         if debug:
             logger.debug(f"Removed {str(src_path)} from sys.path")
+
+def _recurse_to_repo_path(dir: Path):
+    if "pfda-c" in dir.name:
+        return dir
+    else:
+        return _recurse_to_repo_path(dir.parent)

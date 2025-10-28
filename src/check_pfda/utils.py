@@ -411,8 +411,28 @@ def _remove_src_from_sys_path(debug: bool, src_path: Path, logger):
         if debug:
             logger.debug(f"Removed {str(src_path)} from sys.path")
 
-def _recurse_to_repo_path(dir: Path):
-    if "pfda-c" in dir.name:
-        return dir
-    else:
-        return _recurse_to_repo_path(dir.parent)
+
+class RepositoryNotFound(Exception):
+    """Raised when the repository root cannot be located."""
+    pass
+
+
+def _recurse_to_repo_path(current_path: Path) -> Path:
+    """Recursively search upward for a directory containing 'pfda-c'.
+
+    :param current_path: The starting path to search upward from.
+    :type current_path: Path
+    :returns: The path to the directory whose name contains ``pfda-c``.
+    :rtype: Path
+    :raises RepositoryNotFound: If no directory named ``pfda-c`` is found up to the filesystem root.
+    """
+    if "pfda-c" in current_path.name:
+        return current_path
+
+    # filesystem root
+    if current_path.parent == current_path:
+        raise RepositoryNotFound(
+            f"No 'pfda-c' repository found starting from {current_path!s}"
+        )
+
+    return _recurse_to_repo_path(current_path.parent)

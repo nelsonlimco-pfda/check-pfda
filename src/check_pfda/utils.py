@@ -306,23 +306,6 @@ def _construct_test_url(chapter, assignment: str) -> str:
     return f"{base_url}/c{chapter}/test_{assignment}.py?now=0423"
 
 
-def get_module_in_src() -> str:
-    """Get the name of the assignment the student is working on."""
-    current_path = Path.cwd()
-    if not current_path.name == "src":
-        src_dir = current_path / "src"
-    else:
-        src_dir = current_path
-    py_files = list(src_dir.glob("*.py"))
-    if not py_files:
-        raise FileNotFoundError("No Python module found in the src/"
-                                " directory.")
-    if len(py_files) > 1:
-        raise RuntimeError("Multiple Python modules found in src/."
-                           " Expected only one.")
-    return py_files[0].stem
-
-
 def get_current_assignment(repo_path: Path, logger) -> AssignmentInfo | None:
     """
     Matches the current working directory against a YAML configuration file
@@ -387,19 +370,6 @@ def get_current_assignment(repo_path: Path, logger) -> AssignmentInfo | None:
     # No match found
     logger.debug("Error parsing cwd and matching it against config. Contact your TA.")
     return None
-
-
-def _add_src_to_sys_path(src_path: Path, logger):
-    if str(src_path) not in sys.path:
-        sys.path.insert(0, str(src_path))
-        logger.debug(f"Added {str(src_path)} to sys.path")
-
-
-def _remove_src_from_sys_path(debug: bool, src_path: Path, logger):
-    if str(src_path) in sys.path:
-        sys.path.remove(str(src_path))
-        if debug:
-            logger.debug(f"Removed {str(src_path)} from sys.path")
 
 
 class RepositoryNotFound(Exception):

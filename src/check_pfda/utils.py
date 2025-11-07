@@ -1,4 +1,5 @@
 """Public modules."""
+from contextlib import contextmanager
 from logging import Logger
 import os
 import sys
@@ -457,3 +458,14 @@ def _set_up_test_file(assignment: AssignmentInfo, logger: Logger, repo_tests_dir
     with open(test_file_path, "w", encoding="utf-8") as f:
         f.write(tests)
     logger.debug(f"Wrote test file to: {test_file_path}")
+    return test_file_path
+
+@contextmanager
+def _add_to_path(path: str | Path):
+    """Temporarily add a directory to sys.path."""
+    path = str(Path(path).resolve())
+    sys.path.insert(0, path)
+    try:
+        yield
+    finally:
+        sys.path.remove(path)

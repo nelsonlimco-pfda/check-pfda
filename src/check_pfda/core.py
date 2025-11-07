@@ -9,7 +9,7 @@ import platform
 
 from click import echo, secho
 import pytest
-from check_pfda.utils import get_current_assignment, _add_src_to_sys_path, _remove_src_from_sys_path, _recurse_to_repo_path, _set_up_test_file
+from check_pfda.utils import get_current_assignment, _add_to_path, _remove_src_from_sys_path, _recurse_to_repo_path, _set_up_test_file
 
 
 LOGGER = logging.getLogger(__name__)
@@ -34,9 +34,8 @@ def check_student_code(verbosity: int = 2, logger_level=logging.INFO) -> None:
 
     _set_up_test_file(current_assignment, LOGGER, REPO_TESTS_DIR)
     secho(f"Checking assignment {current_assignment.assignment} at verbosity {verbosity}...", fg="green")
-    _add_src_to_sys_path(src_path, debug, LOGGER)
-    _test_student_code(debug, test_file_path, tests, verbosity)
-    _remove_src_from_sys_path(debug, src_path, LOGGER)
+    with _add_to_path(REPO_SRC_DIR):
+        _test_student_code(test_file_path, tests, verbosity)
 
 
 def _init_logger(log_file: Path, log_level):
@@ -75,13 +74,8 @@ def _log_package_info():
         LOGGER.debug(f"Unable to retrieve package information: {e}")
 
 
-def _test_student_code(test_file_path: Path, tests, verbosity: int):
+def _test_student_code(test_file_path: Path, verbosity: int):
     try:
-        with open(test_file_path, "w", encoding="utf-8") as f:
-            f.write(tests)
-
-        LOGGER.debug(f"Wrote test file to: {test_file_path}")
-
         args = [str(test_file_path)]
         if verbosity > 0:
             args.append(f"-{'v' * verbosity}")
@@ -89,13 +83,10 @@ def _test_student_code(test_file_path: Path, tests, verbosity: int):
         LOGGER.debug(f"Running pytest with args: {args}")
 
         out = pytest.main(args)
-        LOGGER.debug(f"Pytest output: {out}")
-    except FileNotFoundError as e:
-        echo(f"Error writing test file: {e}")
-        LOGGER.exception("Failed to write test")
+        LOGGER.debug(f"Pytest output:\n{out}")
     except ImportError as e:
         echo(f"Error importing pytest: {e}")
         LOGGER.exception("Failed to import pytest.")
     except PermissionError as e:
-        echo(f"Encountered a permission error when trying to write to the test file: {e}")
+        echo(f"Encountered a permission error when trying to access the test file: {e}")
         LOGGER.exception(f"Failed to write test: {e}")

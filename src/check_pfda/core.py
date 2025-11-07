@@ -71,7 +71,7 @@ def _log_package_info():
         installed_packages.sort()
         for package_name, version in installed_packages:
             LOGGER.debug(f"  {package_name}=={version}")
-    except Exception as e:
+    except ImportError as e:
         LOGGER.debug(f"Unable to retrieve package information: {e}")
 
 

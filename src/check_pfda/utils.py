@@ -88,9 +88,11 @@ def build_user_friendly_err(actual: Any, expected: Any) -> str:
         f"\n---------------------")
     return error_msg
 
+class TestFileError(Exception):
+    """Raised when there is an error with the test file."""
+    pass
 
-
-def get_tests(chapter, assignment: str) -> str:
+def get_tests(chapter: str, assignment: str, logger: Logger) -> str:
     """Get tests for a given assignment."""
     tests_repo_url = _construct_test_url(chapter, assignment)
     try:
@@ -99,19 +101,21 @@ def get_tests(chapter, assignment: str) -> str:
     except requests.exceptions.RequestException as e:
         click.secho(f"Error fetching test file for assignment '"
                     f"{assignment}': {e}", fg="red", bold=True)
-        sys.exit(1)
+        logger.exception(f"Error fetching test file for assignment '{assignment}': {e}")
+        raise TestFileError(f"Error fetching test file for assignment '{assignment}': {e}")
 
     if not r.text.strip():
         click.secho("Error: Received empty test file. Contact your "
-                    "instructor", fg="red", bold=True)
-        sys.exit(1)
+                    "instructor.", fg="red", bold=True)
+        logger.exception(f"Error: Received empty test file for assignment '{assignment}'.")
+        raise TestFileError(f"Error: Received empty test file for assignment '{assignment}'.")
 
     if "def test_" not in r.text:
         click.secho(
             "Warning: This may not be a valid test file.",
             fg="yellow"
         )
-
+        logger.warning(f"Warning: This may not be a valid test file for assignment '{assignment}'.")
     return r.text
 
 
@@ -441,7 +445,7 @@ def _set_up_test_file(assignment: AssignmentInfo, logger: Logger, repo_tests_dir
     chapter = assignment.chapter
     assignment_name = assignment.assignment
     logger.debug(f"Chapter: {chapter}, Assignment: {assignment}")
-    tests = get_tests(chapter, assignment_name)
+    tests = get_tests(chapter, assignment_name, logger)
     logger.debug(f"Retrieved tests (length: {len(tests)} bytes)")
     test_file_path = repo_tests_dir / f"test_{assignment_name}.py"
     with open(test_file_path, "w", encoding="utf-8") as f:

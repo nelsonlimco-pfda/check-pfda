@@ -1,6 +1,7 @@
 """Public modules."""
 from contextlib import contextmanager
 from logging import Logger
+import platform
 import os
 import sys
 from importlib import import_module
@@ -466,3 +467,24 @@ def _add_to_path(path: str | Path):
         yield
     finally:
         sys.path.remove(path)
+
+
+def _log_platform_info(logger: Logger):
+    logger.debug(f"Python version: {sys.version}")
+    logger.debug(f"Python executable: {sys.executable}")
+    logger.debug(f"Platform: {platform.platform()}")
+    logger.debug(f"System: {platform.system()} {platform.release()}")
+    logger.debug(f"Machine: {platform.machine()}")
+    logger.debug(f"Processor: {platform.processor()}")
+
+
+def _log_package_info(logger: Logger):
+    logger.debug(f"Installed packages:")
+    try:
+        import pkg_resources
+        installed_packages = [(d.project_name, d.version) for d in pkg_resources.working_set]
+        installed_packages.sort()
+        for package_name, version in installed_packages:
+            logger.debug(f"  {package_name}=={version}")
+    except ImportError as e:
+        logger.debug(f"Unable to retrieve package information: {e}")

@@ -4,12 +4,12 @@ import os
 from pathlib import Path
 import sys
 import logging
-import platform
 
 
 from click import echo, secho
 import pytest
-from check_pfda.utils import get_current_assignment, _add_to_path, _remove_src_from_sys_path, _recurse_to_repo_path, _set_up_test_file
+from check_pfda.utils import (get_current_assignment, _add_to_path, _recurse_to_repo_path, 
+                              _set_up_test_file, _log_package_info, _log_platform_info)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -47,31 +47,10 @@ def _init_logger(log_file: Path, log_level):
         filename=log_file,
         filemode='w'
     )
-    _log_platform_info()
-    _log_package_info()
+    _log_platform_info(LOGGER)
+    _log_package_info(LOGGER)
     LOGGER.debug(f"Current working directory: {os.getcwd()}")
     LOGGER.debug(f"sys.path: {sys.path}")
-
-
-def _log_platform_info():
-    LOGGER.debug(f"Python version: {sys.version}")
-    LOGGER.debug(f"Python executable: {sys.executable}")
-    LOGGER.debug(f"Platform: {platform.platform()}")
-    LOGGER.debug(f"System: {platform.system()} {platform.release()}")
-    LOGGER.debug(f"Machine: {platform.machine()}")
-    LOGGER.debug(f"Processor: {platform.processor()}")
-
-
-def _log_package_info():
-    LOGGER.debug(f"Installed packages:")
-    try:
-        import pkg_resources
-        installed_packages = [(d.project_name, d.version) for d in pkg_resources.working_set]
-        installed_packages.sort()
-        for package_name, version in installed_packages:
-            LOGGER.debug(f"  {package_name}=={version}")
-    except ImportError as e:
-        LOGGER.debug(f"Unable to retrieve package information: {e}")
 
 
 def _test_student_code(test_file_path: Path, verbosity: int):

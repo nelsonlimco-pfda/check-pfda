@@ -1,27 +1,24 @@
 """Command-line interface for package usage."""
+import logging
 
 import click
 
-from .core import check_student_code, write_assignment_results
+from .core import check_student_code
 
 
-@click.group()
-def cli():
-    """Group for CLI entrypoint."""
-    pass
-
-
-@cli.command()
-@click.argument('assignment_id')
-def check(assignment_id: str) -> None:
-    """Run student checks."""
-    click.echo(f"Checking {assignment_id}...")
-    check_student_code(assignment_id)
-
-
-@cli.command()
-@click.argument('assignment_id')
-def admin(assignment_id: str) -> None:
-    """Instructor command: writes full assignment results."""
-    click.echo(f"Getting results for {assignment_id}...")
-    write_assignment_results(assignment_id)
+@click.command()
+@click.option(
+    '-v', '--verbosity',
+    default=2,
+    type=int,
+    help='Set verbosity level (0-3). Default is 2.'
+)
+@click.option(
+    '-d', '--debug',
+    is_flag=True,
+    default=False,
+    help='Enable debug mode.'
+)
+def cli(verbosity, debug):
+    """Run student code checks."""
+    check_student_code(verbosity=verbosity, logger_level=logging.DEBUG if debug else logging.INFO)

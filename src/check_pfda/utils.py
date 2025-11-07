@@ -23,7 +23,7 @@ STRING_LEN_LIMIT = 1000
 class AssignmentInfo(NamedTuple):
     """Information about the current assignment."""
     chapter: str
-    assignment: str
+    name: str
 
 
 def assert_script_exists(module_name: str, accepted_dirs: list, repo_path: Path) -> None:
@@ -392,7 +392,7 @@ def _match_assignment_from_config(config: dict, repo_path_str: str, logger: Logg
             if assignment in repo_path_str.replace("-", "_"):
                 result = AssignmentInfo(
                     chapter=str(chapter_key)[1:],
-                    assignment=str(assignment).replace("-", "_")
+                    name=str(assignment).replace("-", "_")
                 )
                 logger.debug(f"Current assignment info: {result}")
                 return result
@@ -448,10 +448,9 @@ def _recurse_to_repo_path_helper(current_path: Path, searched_paths: List[Path])
 
 def _set_up_test_file(assignment: AssignmentInfo, logger: Logger, repo_tests_dir: Path):
     chapter = assignment.chapter
-    assignment_name = assignment.assignment
+    assignment_name = assignment.name
     logger.debug(f"Chapter: {chapter}, Assignment: {assignment}")
     tests = get_tests(chapter, assignment_name, logger)
-    logger.debug(f"Retrieved tests (length: {len(tests)} bytes)")
     test_file_path = repo_tests_dir / f"test_{assignment_name}.py"
     with open(test_file_path, "w", encoding="utf-8") as f:
         f.write(tests)

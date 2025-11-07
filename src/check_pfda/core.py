@@ -33,7 +33,7 @@ def check_student_code(verbosity: int = 2, logger_level=logging.INFO) -> None:
     LOGGER.debug(f"Created/verified .tests directory: {REPO_TESTS_DIR}")
 
     test_file_path =_set_up_test_file(current_assignment, LOGGER, REPO_TESTS_DIR)
-    secho(f"Checking assignment {current_assignment.assignment} at verbosity {verbosity}...", fg="green")
+    secho(f"Checking chapter {current_assignment.chapter} assignment {current_assignment.name} at verbosity {verbosity}...", fg="green")
     with _add_to_path(REPO_SRC_DIR):
         _test_student_code(test_file_path, verbosity)
 

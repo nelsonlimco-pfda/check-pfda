@@ -1,4 +1,5 @@
 """Public modules."""
+from logging import Logger
 import os
 import sys
 from importlib import import_module
@@ -446,14 +447,13 @@ def _recurse_to_repo_path(current_path: Path) -> Path:
 
     return _recurse_to_repo_path(current_path.parent)
 
-def _set_up_test_file(assignment: AssignmentInfo):
+def _set_up_test_file(assignment: AssignmentInfo, logger: Logger, repo_tests_dir: Path):
     chapter = assignment.chapter
-    assignment = assignment.assignment
-    echo(f"Checking assignment {assignment} at verbosity {verbosity}...")
-    LOGGER.debug(f"Chapter: {chapter}, Assignment: {assignment}")
-    tests = get_tests(chapter, assignment)
-    LOGGER.debug(f"Retrieved tests (length: {len(tests)} bytes)")
-    test_file_path = REPO_TESTS_DIR / f"test_{assignment.assignment}.py"
+    assignment_name = assignment.assignment
+    logger.debug(f"Chapter: {chapter}, Assignment: {assignment}")
+    tests = get_tests(chapter, assignment_name)
+    logger.debug(f"Retrieved tests (length: {len(tests)} bytes)")
+    test_file_path = repo_tests_dir / f"test_{assignment_name}.py"
     with open(test_file_path, "w", encoding="utf-8") as f:
         f.write(tests)
-    LOGGER.debug(f"Wrote test file to: {test_file_path}")
+    logger.debug(f"Wrote test file to: {test_file_path}")

@@ -306,6 +306,28 @@ def _construct_test_url(chapter, assignment: str) -> str:
     return f"{base_url}/c{chapter}/test_{assignment}.py?now=0423"
 
 
+def _load_config_yaml(logger: Logger) -> dict | None:
+    """Load and parse the YAML configuration file.
+
+    :param logger: Logger instance for debug logging.
+    :type logger: Logger
+    :return: The parsed YAML config dictionary, or None if loading/parsing failed.
+    :rtype: dict | None
+    """
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    config_path = os.path.join(base_dir, "check_pfda", "config.yaml")
+    try:
+        with open(config_path, 'r') as file:
+            config = yaml.safe_load(file)
+        return config
+    except FileNotFoundError:
+        logger.exception(f"YAML file not found: {config_path}")
+        return None
+    except yaml.YAMLError as e:
+        logger.exception(f"Error parsing YAML file: {e}")
+        return None
+
+
 def get_current_assignment(repo_path: Path, logger) -> AssignmentInfo | None:
     """
     Matches the current working directory against a YAML configuration file
@@ -319,24 +341,22 @@ def get_current_assignment(repo_path: Path, logger) -> AssignmentInfo | None:
     :return: An AssignmentInfo named tuple with 'chapter' and 'assignment' fields if found, None on error
     :rtype: AssignmentInfo | None
     """
-    # Read and parse the YAML file
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    config_path = os.path.join(base_dir, "check_pfda", "config.yaml")
     repo_path_str = str(repo_path)
     if "c07" in repo_path_str or "c08" in repo_path_str:
         click.secho("C07 and C08 do not have any automated tests. Refer to the README for more information.", fg="yellow")
         return None
-    try:
-        with open(config_path, 'r') as file:
-            config = yaml.safe_load(file)
-    except FileNotFoundError:
-        logger.exception(f"YAML file not found: {config_path}")
-        return None
-    except yaml.YAMLError as e:
-        logger.exception(f"Error parsing YAML file: {e}")
+    
+    config = _load_config_yaml(logger)
+    if config is None:
         return None
     
-    """This logic is necessary because there's no way to get the name of the current assignment without some
+    return _match_assignment_from_config(config, repo_path_str, logger)
+
+
+def _match_assignment_from_config(config: dict, repo_path_str: str, logger: Logger) -> AssignmentInfo | None:
+    """Match the repository path against the config to find the current assignment.
+    
+    This logic is necessary because there's no way to get the name of the current assignment without some
     external source of assignment names from the student's repo's root dir. This is because assignment names
     vary in length and student names also vary in length and both may use the same delimiter. For example:
     
@@ -350,6 +370,15 @@ def get_current_assignment(repo_path: Path, logger) -> AssignmentInfo | None:
     
     1. The student's GitHub username.
     2. Names of valid assignments.
+
+    :param config: The parsed YAML configuration dictionary.
+    :type config: dict
+    :param repo_path_str: The string representation of the repository path.
+    :type repo_path_str: str
+    :param logger: Logger instance for debug logging.
+    :type logger: Logger
+    :return: An AssignmentInfo named tuple if a match is found, None otherwise.
+    :rtype: AssignmentInfo | None
     """
     # Iterate through chapters in the config
     for chapter_key, assignments in config.get('tests', {}).items():

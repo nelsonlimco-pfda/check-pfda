@@ -18,7 +18,6 @@ import requests
 
 import yaml
 
-# Constants.
 STRING_LEN_LIMIT = 1000
 
 
@@ -26,11 +25,6 @@ class AssignmentInfo(NamedTuple):
     """Information about the current assignment."""
     chapter: str
     assignment: str
-
-
-"""
-Public functions. These are intended for direct implementation in unit tests.
-"""
 
 
 def assert_script_exists(module_name: str, accepted_dirs: list) -> None:

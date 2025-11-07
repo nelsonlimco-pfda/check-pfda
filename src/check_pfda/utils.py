@@ -336,27 +336,34 @@ def get_module_in_src() -> str:
     return py_files[0].stem
 
 
-def get_current_assignment(repo_path: Path) -> dict | None:
+def get_current_assignment(repo_path: Path, logger) -> dict | None:
     """
     Matches the current working directory against a YAML configuration file
     to find the corresponding chapter and assignment.
 
-    :raises ValueError: When the parsed cwd does not match any assignments in config.yaml.
+    :param repo_path: The path to the repository root.
+    :type repo_path: Path
+    :param logger: Logger instance for debug logging.
+    :type logger: logging.Logger
 
-    :return: A dictionary with 'chapter' and 'assignment' keys if found
+    :return: A dictionary with 'chapter' and 'assignment' keys if found, None on error
     :rtype: dict | None
     """
     # Read and parse the YAML file
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     config_path = os.path.join(base_dir, "check_pfda", "config.yaml")
+    repo_path_str = str(repo_path)
+    if "c07" in repo_path_str or "c08" in repo_path_str:
+        click.secho("C07 and C08 do not have any automated tests. Refer to the README for more information.", fg="yellow")
+        return None
     try:
         with open(config_path, 'r') as file:
             config = yaml.safe_load(file)
     except FileNotFoundError:
-        print(f"YAML file not found: {config_path}")
+        logger.exception(f"YAML file not found: {config_path}")
         return None
     except yaml.YAMLError as e:
-        print(f"Error parsing YAML file: {e}")
+        logger.exception(f"Error parsing YAML file: {e}")
         return None
     
     """This logic is necessary because there's no way to get the name of the current assignment without some
@@ -375,21 +382,22 @@ def get_current_assignment(repo_path: Path) -> dict | None:
     2. Names of valid assignments.
     """
     # Iterate through chapters in the config
-    repo_path = str(repo_path)
-    if "c07" in repo_path or "c08" in repo_path:
-        raise ValueError("C07 and C08 do not have any automated tests. Refer to the README for more information.")
     for chapter_key, assignments in config.get('tests', {}).items():
         # Skip the tests_repo_url key
         if chapter_key == 'tests_repo_url':
             continue
-        if chapter_key not in repo_path:
+        if chapter_key not in repo_path_str:
             continue
         for assignment in assignments:
-            if assignment in repo_path.replace("-", "_"):
-                return {"chapter": str(chapter_key)[1:],
-                        "assignment": str(assignment).replace("-", "_")}
-        
-    raise ValueError("Error parsing cwd and matching it against config. Contact your TA.")
+            if assignment in repo_path_str.replace("-", "_"):
+                result = {"chapter": str(chapter_key)[1:],
+                         "assignment": str(assignment).replace("-", "_")}
+                logger.debug(f"Current assignment info: {result}")
+                return result
+    
+    # No match found
+    logger.debug("Error parsing cwd and matching it against config. Contact your TA.")
+    return None
 
 
 def _add_src_to_sys_path(src_path: Path, logger):

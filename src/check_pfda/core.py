@@ -15,20 +15,17 @@ from check_pfda.utils import get_current_assignment, get_tests, _add_src_to_sys_
 LOGGER = logging.getLogger(__name__)
 
 REPO_PATH = _recurse_to_repo_path(Path.cwd())
-REPO_SRC_PATH = REPO_PATH / "src"
+REPO_SRC_DIR = REPO_PATH / "src"
 REPO_TESTS_DIR = REPO_PATH / ".tests"
-LOG_FILE = REPO_PATH / "debug.log"
+REPO_LOG_FILE = REPO_PATH / "debug.log"
 
 
 def check_student_code(verbosity: int = 2, logger_level=logging.INFO) -> None:
     """Main check-pfda runner. Outputs results of tests to scripts in `src` to stdout."""
-    _init_logger(LOG_FILE, logger_level)
-    try:
-        current_assignment = get_current_assignment()
-        LOGGER.debug(f"Current assignment info: {current_assignment}")
-    except TypeError:
+    _init_logger(REPO_LOG_FILE, logger_level)
+    current_assignment = get_current_assignment(REPO_PATH, LOGGER)
+    if not current_assignment:
         echo("Unable to match chapter and assignment against cwd. Contact your TA.")
-        LOGGER.exception("Failed to get current assignment")
         return
     chapter = current_assignment["chapter"]
     assignment = current_assignment["assignment"]
@@ -39,13 +36,12 @@ def check_student_code(verbosity: int = 2, logger_level=logging.INFO) -> None:
     tests = get_tests(chapter, assignment)
     LOGGER.debug(f"Retrieved tests (length: {len(tests)} bytes)")
 
-    tests_dir = root_path / ".tests"
-    tests_dir.mkdir(exist_ok=True)
+    REPO_TESTS_DIR.mkdir(exist_ok=True)
 
-    LOGGER.debug(f"Created/verified .tests directory: {tests_dir}")
+    LOGGER.debug(f"Created/verified .tests directory: {REPO_TESTS_DIR}")
 
     # Write test file to .tests directory
-    test_file_path = tests_dir / f"test_{assignment}.py"
+    test_file_path = REPO_TESTS_DIR / f"test_{assignment}.py"
 
     _add_src_to_sys_path(src_path, debug, LOGGER)
     _pytest_student_code(debug, test_file_path, tests, verbosity)

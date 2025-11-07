@@ -6,7 +6,7 @@ import sys
 from importlib import import_module
 from io import StringIO
 from pathlib import Path
-from typing import Any, NamedTuple
+from typing import Any, List, NamedTuple
 
 import click
 
@@ -37,11 +37,9 @@ def assert_script_exists(module_name: str, accepted_dirs: list) -> None:
     :return: None
     :rtype: None
     """
-    current_path = Path.cwd()
-    if current_path.name == "src":
-        current_path = current_path.parent
+    root = _recurse_to_repo_path(Path.cwd())
     for subfolder in accepted_dirs:
-        filename = current_path / subfolder / f"{module_name}.py"
+        filename = root / subfolder / f"{module_name}.py"
         if filename.exists():
             return None
     pytest.fail(reason=f"The script '{module_name}.py' does not exist in "
@@ -431,16 +429,35 @@ def _recurse_to_repo_path(current_path: Path) -> Path:
     :rtype: Path
     :raises RepositoryNotFound: If no directory named ``pfda-c`` is found up to the filesystem root.
     """
+    searched_paths = []
+    return _recurse_to_repo_path_helper(current_path, searched_paths)
+
+
+def _recurse_to_repo_path_helper(current_path: Path, searched_paths: List[Path]) -> Path:
+    """Helper function that recursively searches upward and collects searched paths.
+
+    :param current_path: The current path being checked.
+    :type current_path: Path
+    :param searched_paths: List to accumulate all paths that were searched.
+    :type searched_paths: list[Path]
+    :returns: The path to the directory whose name contains ``pfda-c``.
+    :rtype: Path
+    :raises RepositoryNotFound: If no directory named ``pfda-c`` is found up to the filesystem root.
+    """
+    searched_paths.append(current_path)
+    
     if "pfda-c" in current_path.name:
         return current_path
 
     # filesystem root
     if current_path.parent == current_path:
+        path_list = "\n  ".join(str(p) for p in searched_paths)
         raise RepositoryNotFound(
-            f"No 'pfda-c' repository found starting from {current_path!s}"
+            f"No 'pfda-c' repository found starting from {searched_paths[0]!s}.\n"
+            f"Searched paths:\n  {path_list}"
         )
 
-    return _recurse_to_repo_path(current_path.parent)
+    return _recurse_to_repo_path_helper(current_path.parent, searched_paths)
 
 def _set_up_test_file(assignment: AssignmentInfo, logger: Logger, repo_tests_dir: Path):
     chapter = assignment.chapter

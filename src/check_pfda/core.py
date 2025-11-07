@@ -90,6 +90,12 @@ def _test_student_code(test_file_path: Path, tests, verbosity: int):
 
         out = pytest.main(args)
         LOGGER.debug(f"Pytest output: {out}")
-    except Exception as e:
-        echo(f"Error writing or running test file: {e}")
-        LOGGER.exception("Failed to write or run test file")
+    except FileNotFoundError as e:
+        echo(f"Error writing test file: {e}")
+        LOGGER.exception("Failed to write test")
+    except ImportError as e:
+        echo(f"Error importing pytest: {e}")
+        LOGGER.exception("Failed to import pytest.")
+    except PermissionError as e:
+        echo(f"Encountered a permission error when trying to write to the test file: {e}")
+        LOGGER.exception(f"Failed to write test: {e}")

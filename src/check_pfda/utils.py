@@ -10,8 +10,6 @@ from typing import Any, List, NamedTuple
 
 import click
 
-import py.path
-
 import pytest
 
 import requests
@@ -27,7 +25,7 @@ class AssignmentInfo(NamedTuple):
     assignment: str
 
 
-def assert_script_exists(module_name: str, accepted_dirs: list) -> None:
+def assert_script_exists(module_name: str, accepted_dirs: list, repo_path: Path) -> None:
     """Check accepted subfolders for the module script.
 
     :param module_name: The name of the module to check.
@@ -37,9 +35,8 @@ def assert_script_exists(module_name: str, accepted_dirs: list) -> None:
     :return: None
     :rtype: None
     """
-    root = _recurse_to_repo_path(Path.cwd())
     for subfolder in accepted_dirs:
-        filename = root / subfolder / f"{module_name}.py"
+        filename = repo_path / subfolder / f"{module_name}.py"
         if filename.exists():
             return None
     pytest.fail(reason=f"The script '{module_name}.py' does not exist in "
@@ -91,25 +88,6 @@ def build_user_friendly_err(actual: Any, expected: Any) -> str:
         f"\n---------------------")
     return error_msg
 
-
-def generate_temp_file(filename: str,
-                       tmpdir: py.path.local,
-                       contents: Any) -> str:
-    """Generate a temporary file to test with.
-
-    :param filename: The name of the temporary file.
-    :type filename: str
-    :param tmpdir: Pytest's tmpdir fixture.
-    :type tmpdir: py.path.local
-    :param contents: The contents to write to the temporary file.
-    :type contents: Any
-    :return: The path to the temporary file.
-    :rtype: str
-    """
-    filepath = os.path.join(tmpdir, filename)
-    with open(filepath, "w") as f:
-        f.write(contents)
-    return filepath
 
 
 def get_tests(chapter, assignment: str) -> str:

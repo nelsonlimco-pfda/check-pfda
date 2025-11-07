@@ -27,8 +27,8 @@ def check_student_code(verbosity: int = 2, logger_level=logging.INFO) -> None:
     if not current_assignment:
         echo("Unable to match chapter and assignment against cwd. Contact your TA.")
         return
-    chapter = current_assignment["chapter"]
-    assignment = current_assignment["assignment"]
+    chapter = current_assignment.chapter
+    assignment = current_assignment.assignment
     echo(f"Checking assignment {assignment} at verbosity {verbosity}...")
 
     LOGGER.debug(f"Chapter: {chapter}, Assignment: {assignment}")

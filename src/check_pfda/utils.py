@@ -4,7 +4,7 @@ import sys
 from importlib import import_module
 from io import StringIO
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import click
 
@@ -18,6 +18,12 @@ import yaml
 
 # Constants.
 STRING_LEN_LIMIT = 1000
+
+
+class AssignmentInfo(NamedTuple):
+    """Information about the current assignment."""
+    chapter: str
+    assignment: str
 
 
 """
@@ -336,7 +342,7 @@ def get_module_in_src() -> str:
     return py_files[0].stem
 
 
-def get_current_assignment(repo_path: Path, logger) -> dict | None:
+def get_current_assignment(repo_path: Path, logger) -> AssignmentInfo | None:
     """
     Matches the current working directory against a YAML configuration file
     to find the corresponding chapter and assignment.
@@ -346,8 +352,8 @@ def get_current_assignment(repo_path: Path, logger) -> dict | None:
     :param logger: Logger instance for debug logging.
     :type logger: logging.Logger
 
-    :return: A dictionary with 'chapter' and 'assignment' keys if found, None on error
-    :rtype: dict | None
+    :return: An AssignmentInfo named tuple with 'chapter' and 'assignment' fields if found, None on error
+    :rtype: AssignmentInfo | None
     """
     # Read and parse the YAML file
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -390,8 +396,10 @@ def get_current_assignment(repo_path: Path, logger) -> dict | None:
             continue
         for assignment in assignments:
             if assignment in repo_path_str.replace("-", "_"):
-                result = {"chapter": str(chapter_key)[1:],
-                         "assignment": str(assignment).replace("-", "_")}
+                result = AssignmentInfo(
+                    chapter=str(chapter_key)[1:],
+                    assignment=str(assignment).replace("-", "_")
+                )
                 logger.debug(f"Current assignment info: {result}")
                 return result
     

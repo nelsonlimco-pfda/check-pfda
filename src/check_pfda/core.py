@@ -9,7 +9,7 @@ import platform
 
 from click import echo
 import pytest
-from check_pfda.utils import get_current_assignment, get_tests, _add_src_to_sys_path, _remove_src_from_sys_path, _recurse_to_repo_path
+from check_pfda.utils import get_current_assignment, _add_src_to_sys_path, _remove_src_from_sys_path, _recurse_to_repo_path, _set_up_test_file
 
 
 LOGGER = logging.getLogger(__name__)
@@ -27,24 +27,15 @@ def check_student_code(verbosity: int = 2, logger_level=logging.INFO) -> None:
     if not current_assignment:
         echo("Unable to match chapter and assignment against cwd. Contact your TA.")
         return
-    chapter = current_assignment.chapter
-    assignment = current_assignment.assignment
-    echo(f"Checking assignment {assignment} at verbosity {verbosity}...")
-
-    LOGGER.debug(f"Chapter: {chapter}, Assignment: {assignment}")
-
-    tests = get_tests(chapter, assignment)
-    LOGGER.debug(f"Retrieved tests (length: {len(tests)} bytes)")
 
     REPO_TESTS_DIR.mkdir(exist_ok=True)
 
     LOGGER.debug(f"Created/verified .tests directory: {REPO_TESTS_DIR}")
 
-    # Write test file to .tests directory
-    test_file_path = REPO_TESTS_DIR / f"test_{assignment}.py"
+    _set_up_test_file(current_assignment)
 
     _add_src_to_sys_path(src_path, debug, LOGGER)
-    _pytest_student_code(debug, test_file_path, tests, verbosity)
+    _test_student_code(debug, test_file_path, tests, verbosity)
     _remove_src_from_sys_path(debug, src_path, LOGGER)
 
 
@@ -84,7 +75,7 @@ def _log_package_info():
         LOGGER.debug(f"Unable to retrieve package information: {e}")
 
 
-def _pytest_student_code(debug: bool, test_file_path: Path, tests, verbosity: int):
+def _test_student_code(debug: bool, test_file_path: Path, tests, verbosity: int):
     try:
         with open(test_file_path, "w", encoding="utf-8") as f:
             f.write(tests)

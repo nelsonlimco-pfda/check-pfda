@@ -445,3 +445,15 @@ def _recurse_to_repo_path(current_path: Path) -> Path:
         )
 
     return _recurse_to_repo_path(current_path.parent)
+
+def _set_up_test_file(assignment: AssignmentInfo):
+    chapter = assignment.chapter
+    assignment = assignment.assignment
+    echo(f"Checking assignment {assignment} at verbosity {verbosity}...")
+    LOGGER.debug(f"Chapter: {chapter}, Assignment: {assignment}")
+    tests = get_tests(chapter, assignment)
+    LOGGER.debug(f"Retrieved tests (length: {len(tests)} bytes)")
+    test_file_path = REPO_TESTS_DIR / f"test_{assignment.assignment}.py"
+    with open(test_file_path, "w", encoding="utf-8") as f:
+        f.write(tests)
+    LOGGER.debug(f"Wrote test file to: {test_file_path}")

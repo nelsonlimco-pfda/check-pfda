@@ -161,14 +161,19 @@ Private functions. Do not implement these directly in any unit tests.
 
 
 def _format_type(var_type: str) -> str:
-    """Format repr class type.
+    """Format repr class type to make <class 'xyz'> more readable.
 
-    :param var_type: The name of a type.
+    :param var_type: The string representation of a type (e.g., "<class 'str'>").
     :type var_type: str
-    :return: The formatted type.
+    :return: The formatted type name (e.g., "str") or an error message if var_type is empty.
     :rtype: str
     """
-    return var_type.split("'")[1::2][0] if var_type else "Your function output None, but is expected to return a value."
+    if not var_type:
+        return "Your function output None, but is expected to return a value."
+    
+    parts_split_on_quotes = var_type.split("'")
+    class_name = parts_split_on_quotes[1::2]
+    return class_name[0] if class_name else var_type
 
 
 def _is_different_type(expected: Any, actual: Any) -> bool:

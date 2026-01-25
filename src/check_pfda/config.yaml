@@ -1,0 +1,24 @@
+tests:
+  tests_repo_url: "https://raw.githubusercontent.com/nelsonlimco-pfda/autograder-tests/main"
+  c00:
+    - hello_world
+  c01:
+    - shout
+    - favorite_artist
+    - timelapse_calc
+  c02:
+    - rectangle_calc
+    - render_calc
+  c03:
+    - even_odd_guess
+    - rock_paper_scissors
+  c04:
+    - twttrfy
+    - pattern_quilt_generator
+  c05:
+    - magic_sorting_hat
+    - simple_cipher
+    - cowsay
+  c06:
+    - art_prompt_generator
+    - character_inventory

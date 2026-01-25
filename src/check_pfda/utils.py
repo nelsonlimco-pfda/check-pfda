@@ -461,11 +461,14 @@ def _set_up_test_file(assignment: AssignmentInfo, logger: Logger, repo_tests_dir
 def _add_to_path(path: str | Path):
     """Temporarily add a directory to sys.path."""
     path = str(Path(path).resolve())
-    sys.path.insert(0, path)
+    path_already_in_sys_path = path in sys.path
+    if not path_already_in_sys_path:
+        sys.path.insert(0, path)
     try:
         yield
     finally:
-        sys.path.remove(path)
+        if not path_already_in_sys_path and path in sys.path:
+            sys.path.remove(path)
 
 
 def _log_platform_info(logger: Logger):

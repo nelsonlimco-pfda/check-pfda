@@ -41,7 +41,7 @@ def assert_script_exists(module_name: str, accepted_dirs: list, repo_path: Path)
         if filename.exists():
             return None
     pytest.fail(reason=f"The script '{module_name}.py' does not exist in "
-                       f"the accepted directories: {accepted_dirs}.")
+                f"the accepted directories: {accepted_dirs}.")
 
 
 def build_user_friendly_err(actual: Any, expected: Any) -> str:
@@ -89,9 +89,11 @@ def build_user_friendly_err(actual: Any, expected: Any) -> str:
         f"\n---------------------")
     return error_msg
 
+
 class TestFileError(Exception):
     """Raised when there is an error with the test file."""
     pass
+
 
 def get_tests(chapter: str, assignment: str, logger: Logger) -> str:
     """Get tests for a given assignment."""
@@ -102,21 +104,26 @@ def get_tests(chapter: str, assignment: str, logger: Logger) -> str:
     except requests.exceptions.RequestException as e:
         click.secho(f"Error fetching test file for assignment '"
                     f"{assignment}': {e}", fg="red", bold=True)
-        logger.exception(f"Error fetching test file for assignment '{assignment}': {e}")
-        raise TestFileError(f"Error fetching test file for assignment '{assignment}': {e}")
+        logger.exception(
+            f"Error fetching test file for assignment '{assignment}': {e}")
+        raise TestFileError(
+            f"Error fetching test file for assignment '{assignment}': {e}")
 
     if not r.text.strip():
         click.secho("Error: Received empty test file. Contact your "
                     "instructor.", fg="red", bold=True)
-        logger.exception(f"Error: Received empty test file for assignment '{assignment}'.")
-        raise TestFileError(f"Error: Received empty test file for assignment '{assignment}'.")
+        logger.exception(
+            f"Error: Received empty test file for assignment '{assignment}'.")
+        raise TestFileError(
+            f"Error: Received empty test file for assignment '{assignment}'.")
 
     if "def test_" not in r.text:
         click.secho(
             "Warning: This may not be a valid test file.",
             fg="yellow"
         )
-        logger.warning(f"Warning: This may not be a valid test file for assignment '{assignment}'.")
+        logger.warning(
+            f"Warning: This may not be a valid test file for assignment '{assignment}'.")
     return r.text
 
 
@@ -171,7 +178,7 @@ def _format_type(var_type: str) -> str:
     """
     if not var_type:
         return "Your function output None, but is expected to return a value."
-    
+
     parts_split_on_quotes = var_type.split("'")
     class_name = parts_split_on_quotes[1::2]
     return class_name[0] if class_name else var_type
@@ -344,31 +351,32 @@ def get_current_assignment(repo_path: Path, logger) -> AssignmentInfo | None:
     """
     repo_path_str = str(repo_path)
     if "c07" in repo_path_str or "c08" in repo_path_str:
-        click.secho("C07 and C08 do not have any automated tests. Refer to the README for more information.", fg="yellow")
+        click.secho(
+            "C07 and C08 do not have any automated tests. Refer to the README for more information.", fg="yellow")
         return None
-    
+
     config = _load_config_yaml(logger)
     if config is None:
         return None
-    
+
     return _match_assignment_from_config(config, repo_path_str, logger)
 
 
 def _match_assignment_from_config(config: dict, repo_path_str: str, logger: Logger) -> AssignmentInfo | None:
     """Match the repository path against the config to find the current assignment.
-    
+
     This logic is necessary because there's no way to get the name of the current assignment without some
     external source of assignment names from the student's repo's root dir. This is because assignment names
     vary in length and student names also vary in length and both may use the same delimiter. For example:
-    
+
     pfda-c01-lab-favorite-artist-bencres-demo
-    
+
     and
-    
+
     pfda-c01-lab-shout-bencres-demo
-    
+
     In this case, we can't get 'favorite-artist' or 'shout' without knowing at least one of:
-    
+
     1. The student's GitHub username.
     2. Names of valid assignments.
 
@@ -396,9 +404,12 @@ def _match_assignment_from_config(config: dict, repo_path_str: str, logger: Logg
                 )
                 logger.debug(f"Current assignment info: {result}")
                 return result
-    
+
     # No match found
-    logger.debug("Error parsing cwd and matching it against config. Contact your TA.")
+    logger.debug(
+        "Error parsing cwd and matching it against config. Contact your TA.")
+    logger.debug(f"Config: {config}")
+    logger.debug(f"Repo path: {repo_path_str}")
     return None
 
 
@@ -432,7 +443,7 @@ def _recurse_to_repo_path_helper(current_path: Path, searched_paths: List[Path])
     :raises RepositoryNotFound: If no directory named ``pfda-c`` is found up to the filesystem root.
     """
     searched_paths.append(current_path)
-    
+
     if "pfda-c" in current_path.name:
         return current_path
 
@@ -446,6 +457,7 @@ def _recurse_to_repo_path_helper(current_path: Path, searched_paths: List[Path])
 
     return _recurse_to_repo_path_helper(current_path.parent, searched_paths)
 
+
 def _set_up_test_file(assignment: AssignmentInfo, logger: Logger, repo_tests_dir: Path):
     chapter = assignment.chapter
     assignment_name = assignment.name
@@ -456,6 +468,7 @@ def _set_up_test_file(assignment: AssignmentInfo, logger: Logger, repo_tests_dir
         f.write(tests)
     logger.debug(f"Wrote test file to: {test_file_path}")
     return test_file_path
+
 
 @contextmanager
 def _add_to_path(path: str | Path):
@@ -484,7 +497,8 @@ def _log_package_info(logger: Logger):
     logger.debug(f"Installed packages:")
     try:
         import pkg_resources
-        installed_packages = [(d.project_name, d.version) for d in pkg_resources.working_set]
+        installed_packages = [(d.project_name, d.version)
+                              for d in pkg_resources.working_set]
         installed_packages.sort()
         for package_name, version in installed_packages:
             logger.debug(f"  {package_name}=={version}")

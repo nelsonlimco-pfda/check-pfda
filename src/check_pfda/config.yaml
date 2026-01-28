@@ -5,7 +5,7 @@ tests:
   c01:
     - shout
     - favorite_artist
-    - timelapse_calc
+    - time_lapse_calc
   c02:
     - rectangle_calc
     - render_calc

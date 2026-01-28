@@ -23,7 +23,7 @@ REPO_LOG_FILE = REPO_PATH / "debug.log"
 def check_student_code(verbosity: int = 2, logger_level=logging.INFO) -> None:
     """Main check-pfda runner. Outputs results of tests to scripts in `src` to stdout."""
     _init_logger(REPO_LOG_FILE, logger_level)
-    current_assignment = get_current_assignment(REPO_PATH, LOGGER)
+    current_assignment = get_current_assignment(REPO_PATH)
     if not current_assignment:
         echo("Unable to match chapter and assignment against cwd. Contact your TA.")
         return
@@ -32,7 +32,7 @@ def check_student_code(verbosity: int = 2, logger_level=logging.INFO) -> None:
 
     LOGGER.debug(f"Created/verified .tests directory: {REPO_TESTS_DIR}")
 
-    test_file_path =_set_up_test_file(current_assignment, LOGGER, REPO_TESTS_DIR)
+    test_file_path =_set_up_test_file(current_assignment, REPO_TESTS_DIR)
     secho(f"Checking chapter {current_assignment.chapter} assignment {current_assignment.name} at verbosity {verbosity}...", fg="green")
     with _add_to_path(REPO_SRC_DIR):
         _test_student_code(test_file_path, verbosity)
@@ -47,8 +47,8 @@ def _init_logger(log_file: Path, log_level):
         filename=log_file,
         filemode='w'
     )
-    _log_platform_info(LOGGER)
-    _log_package_info(LOGGER)
+    _log_platform_info()
+    _log_package_info()
     LOGGER.debug(f"Current working directory: {os.getcwd()}")
     LOGGER.debug(f"sys.path: {sys.path}")
 

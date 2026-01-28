@@ -1,6 +1,6 @@
 """Public modules."""
 from contextlib import contextmanager
-from logging import Logger
+import logging
 import platform
 import os
 import sys
@@ -16,6 +16,8 @@ import pytest
 import requests
 
 import yaml
+
+logger = logging.getLogger(__name__)
 
 STRING_LEN_LIMIT = 1000
 
@@ -95,7 +97,7 @@ class TestFileError(Exception):
     pass
 
 
-def get_tests(chapter: str, assignment: str, logger: Logger) -> str:
+def get_tests(chapter: str, assignment: str) -> str:
     """Get tests for a given assignment."""
     tests_repo_url = _construct_test_url(chapter, assignment)
     try:
@@ -314,11 +316,9 @@ def _construct_test_url(chapter, assignment: str) -> str:
     return f"{base_url}/c{chapter}/test_{assignment}.py?now=0423"
 
 
-def _load_config_yaml(logger: Logger) -> dict | None:
+def _load_config_yaml() -> dict | None:
     """Load and parse the YAML configuration file.
 
-    :param logger: Logger instance for debug logging.
-    :type logger: Logger
     :return: The parsed YAML config dictionary, or None if loading/parsing failed.
     :rtype: dict | None
     """
@@ -336,15 +336,13 @@ def _load_config_yaml(logger: Logger) -> dict | None:
         return None
 
 
-def get_current_assignment(repo_path: Path, logger) -> AssignmentInfo | None:
+def get_current_assignment(repo_path: Path) -> AssignmentInfo | None:
     """
     Matches the current working directory against a YAML configuration file
     to find the corresponding chapter and assignment.
 
     :param repo_path: The path to the repository root.
     :type repo_path: Path
-    :param logger: Logger instance for debug logging.
-    :type logger: logging.Logger
 
     :return: An AssignmentInfo named tuple with 'chapter' and 'assignment' fields if found, None on error
     :rtype: AssignmentInfo | None
@@ -355,14 +353,14 @@ def get_current_assignment(repo_path: Path, logger) -> AssignmentInfo | None:
             "C07 and C08 do not have any automated tests. Refer to the README for more information.", fg="yellow")
         return None
 
-    config = _load_config_yaml(logger)
+    config = _load_config_yaml()
     if config is None:
         return None
 
-    return _match_assignment_from_config(config, repo_path_str, logger)
+    return _match_assignment_from_config(config, repo_path_str)
 
 
-def _match_assignment_from_config(config: dict, repo_path_str: str, logger: Logger) -> AssignmentInfo | None:
+def _match_assignment_from_config(config: dict, repo_path_str: str) -> AssignmentInfo | None:
     """Match the repository path against the config to find the current assignment.
 
     This logic is necessary because there's no way to get the name of the current assignment without some
@@ -384,8 +382,6 @@ def _match_assignment_from_config(config: dict, repo_path_str: str, logger: Logg
     :type config: dict
     :param repo_path_str: The string representation of the repository path.
     :type repo_path_str: str
-    :param logger: Logger instance for debug logging.
-    :type logger: Logger
     :return: An AssignmentInfo named tuple if a match is found, None otherwise.
     :rtype: AssignmentInfo | None
     """
@@ -458,11 +454,11 @@ def _recurse_to_repo_path_helper(current_path: Path, searched_paths: List[Path])
     return _recurse_to_repo_path_helper(current_path.parent, searched_paths)
 
 
-def _set_up_test_file(assignment: AssignmentInfo, logger: Logger, repo_tests_dir: Path):
+def _set_up_test_file(assignment: AssignmentInfo, repo_tests_dir: Path):
     chapter = assignment.chapter
     assignment_name = assignment.name
     logger.debug(f"Chapter: {chapter}, Assignment: {assignment}")
-    tests = get_tests(chapter, assignment_name, logger)
+    tests = get_tests(chapter, assignment_name)
     test_file_path = repo_tests_dir / f"test_{assignment_name}.py"
     with open(test_file_path, "w", encoding="utf-8") as f:
         f.write(tests)
@@ -484,7 +480,7 @@ def _add_to_path(path: str | Path):
             sys.path.remove(path)
 
 
-def _log_platform_info(logger: Logger):
+def _log_platform_info():
     logger.debug(f"Python version: {sys.version}")
     logger.debug(f"Python executable: {sys.executable}")
     logger.debug(f"Platform: {platform.platform()}")
@@ -493,7 +489,7 @@ def _log_platform_info(logger: Logger):
     logger.debug(f"Processor: {platform.processor()}")
 
 
-def _log_package_info(logger: Logger):
+def _log_package_info():
     logger.debug(f"Installed packages:")
     try:
         import pkg_resources

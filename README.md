@@ -1,6 +1,6 @@
 # check-pfda
 
-Check-pfda is a package that tests student code and provides useful, intelligent feedback.
+Check-pfda is a package that tests UTD Bass School student code and provides useful, intelligent feedback.
 
 ## Installation
 `pip install check-pfda`
@@ -11,7 +11,3 @@ Check-pfda is a package that tests student code and provides useful, intelligent
 2. To run:
     - MacOS: `python3 -m check_pfda`
     - Windows: `python -m check_pfda`
-
-
-## Documentation
-

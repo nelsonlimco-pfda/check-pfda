@@ -347,6 +347,11 @@ def get_current_assignment(repo_path: Path) -> AssignmentInfo | None:
     :return: An AssignmentInfo named tuple with 'chapter' and 'assignment' fields if found, None on error
     :rtype: AssignmentInfo | None
     """
+    # TODO: this shouldn't be in business logic--this should be refactored such that
+    # if an assignment is not found, it returns None and the caller can handle it accordingly.
+    # Likely that means printing a message that says "This assignment doesn't have any tests! Check the README
+    # for more information."
+    # Note that we use click.secho, not classic print, to show terminal output.
     repo_path_str = str(repo_path)
     if "c07" in repo_path_str or "c08" in repo_path_str:
         click.secho(

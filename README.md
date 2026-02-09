@@ -280,6 +280,9 @@ Maintenance tip: try to keep these helpers backward-compatible, because changing
 - **“C07 and C08 do not have any automated tests…”**
   - This is expected behavior: the tool intentionally stops for those chapters.
 
+> [!TIP]
+> This needs to be refactored. Could be a good place to start getting used to this codebase.
+
 - **“Error fetching test file…”**
   - Common causes:
     - no internet access
@@ -309,8 +312,6 @@ To run them on demand:
 ```bash
 uv tool run pre-commit run --all-files
 ```
-
-
 
 ---
 

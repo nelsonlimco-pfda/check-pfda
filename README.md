@@ -178,10 +178,7 @@ You usually want to edit this `check-pfda` repo, but run the tool inside a “st
 
 You need a folder that looks like a student assignment repo (the folder name matters).
 
-You can either:
-
-- clone a real PFDA assignment repo (recommended), or
-- create a small demo folder named something like `pfda-c01-lab-shout-dev` with a `src/shout.py` file inside
+- Clone a real PFDA assignment repo using a demo GitHub account. You'll need to accept the assignment on your demo account.
 
 #### 2) Set up your dev environment (uv)
 
@@ -195,7 +192,7 @@ This creates/updates `.venv/` and installs this project in **editable mode**, so
 
 #### 3) Run the checker against the demo repo
 
-The easiest way is to activate this repo’s `.venv` once, then you can run `pfda` from anywhere.
+The easiest way is to activate this repo’s `.venv` once, then you can run `pfda` from anywhere in the same shell session.
 
 From the `check-pfda` repo root, activate:
 
@@ -217,7 +214,7 @@ source .venv/bin/activate
 .\.venv\Scripts\activate.bat
 ```
 
-Then `cd` into the demo assignment repo and run:
+**Then `cd` into the demo assignment repo** and run:
 
 ```bash
 pfda -v 2
@@ -315,14 +312,6 @@ uv tool run pre-commit run --all-files
 
 ---
 
-## Maintainer notes
-
-- **Be careful with breaking changes**: students and tests may depend on existing behavior.
-- **When in doubt, add logging** behind `--debug` rather than printing extra output by default.
-- **If you update `config.yaml`**, double-check that the remote tests repo uses the same names and folder structure.
-
----
-
 ## Publishing to PyPI (release checklist)
 
 This repo uses **uv** for building and publishing.
@@ -415,7 +404,7 @@ Run it from PyPI (this avoids using your local checkout):
 uv run --no-project --with check-pfda pfda --help
 ```
 
-### Common “oops” fixes
+### Common issues
 
 - **“File already exists” on upload**: PyPI does not allow re-uploading the same version.
   - Fix: bump the version in `pyproject.toml` and rebuild.
@@ -423,3 +412,5 @@ uv run --no-project --with check-pfda pfda --help
   - Fix: `uv build --clear`
 - **Verification still shows the old version**: refresh the cached package when running:
   - Fix: add `--refresh-package check-pfda` to the `uv run ...` command
+- **Publish errors with "version already exists on PyPI"**
+  - Fix: remove any files with the old version in the name in `dist`.

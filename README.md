@@ -103,7 +103,7 @@ There are two common ways to start the tool:
 - `pfda` is installed as a command that points to `check_pfda.cli:cli` (see `pyproject.toml`).
 
 > [!IMPORTANT]
-> **This only works in a Python virtual environment**, which students don't use (they use the global interpreter, since they don't know what a virtual environment is). As such, the recommended way to interact with the package is by executing the module.
+> **`pfda` only works in a Python virtual environment**, which students don't use (they use the global interpreter, since they don't know what a virtual environment is). As such, the recommended way to interact with the package is by executing the module.
 
 In both cases, everything funnels into:
 

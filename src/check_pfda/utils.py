@@ -1,20 +1,18 @@
 """Public modules."""
-from contextlib import contextmanager
+
 import logging
-import platform
 import os
+import platform
 import sys
+from contextlib import contextmanager
 from importlib import import_module
 from io import StringIO
 from pathlib import Path
 from typing import Any, List, NamedTuple
 
 import click
-
 import pytest
-
 import requests
-
 import yaml
 
 logger = logging.getLogger(__name__)
@@ -24,11 +22,14 @@ STRING_LEN_LIMIT = 1000
 
 class AssignmentInfo(NamedTuple):
     """Information about the current assignment."""
+
     chapter: str
     name: str
 
 
-def assert_script_exists(module_name: str, accepted_dirs: list, repo_path: Path) -> None:
+def assert_script_exists(
+    module_name: str, accepted_dirs: list, repo_path: Path
+) -> None:
     """Check accepted subfolders for the module script.
 
     :param module_name: The name of the module to check.
@@ -42,8 +43,10 @@ def assert_script_exists(module_name: str, accepted_dirs: list, repo_path: Path)
         filename = repo_path / subfolder / f"{module_name}.py"
         if filename.exists():
             return None
-    pytest.fail(reason=f"The script '{module_name}.py' does not exist in "
-                f"the accepted directories: {accepted_dirs}.")
+    pytest.fail(
+        reason=f"The script '{module_name}.py' does not exist in "
+        f"the accepted directories: {accepted_dirs}."
+    )
 
 
 def build_user_friendly_err(actual: Any, expected: Any) -> str:
@@ -61,20 +64,19 @@ def build_user_friendly_err(actual: Any, expected: Any) -> str:
     if actual is None and expected is not None:
         errors.append("Your function/program did not produce any output.")
     elif actual is not None and expected is None:
-        errors.append("Your function/program produced output when it was "
-                      "not expected.")
+        errors.append("Your function/program produced output when it was not expected.")
 
     if _is_different_type(expected, actual):
         errors.append(
-            f"The expected data type is {_format_type(type(expected))}, "
+            f"The expected data type is {_format_type(repr(type(expected)))}, "
             f"but your actual output data type is "
-            f"{_format_type(type(actual))}.")
+            f"{_format_type(repr(type(actual)))}."
+        )
     elif isinstance(expected, str):
         for error in _find_string_comparison_errors(expected, actual):
             errors.append(error)
     else:
-        errors.append("Your output does not match the expected "
-                      "format or values.")
+        errors.append("Your output does not match the expected format or values.")
 
     errors_formatted = "\n- ".join(errors)
     error_msg = (
@@ -88,12 +90,14 @@ def build_user_friendly_err(actual: Any, expected: Any) -> str:
         f"\n\nIssues Found:"
         f"\n- {errors_formatted}"
         f"\n\nPytest Error Message:"
-        f"\n---------------------")
+        f"\n---------------------"
+    )
     return error_msg
 
 
 class TestFileError(Exception):
     """Raised when there is an error with the test file."""
+
     pass
 
 
@@ -104,28 +108,34 @@ def get_tests(chapter: str, assignment: str) -> str:
         r = requests.get(tests_repo_url, timeout=10)
         r.raise_for_status()
     except requests.exceptions.RequestException as e:
-        click.secho(f"Error fetching test file for assignment '"
-                    f"{assignment}': {e}", fg="red", bold=True)
-        logger.exception(
-            f"Error fetching test file for assignment '{assignment}': {e}")
+        click.secho(
+            f"Error fetching test file for assignment '{assignment}': {e}",
+            fg="red",
+            bold=True,
+        )
+        logger.exception(f"Error fetching test file for assignment '{assignment}': {e}")
         raise TestFileError(
-            f"Error fetching test file for assignment '{assignment}': {e}")
+            f"Error fetching test file for assignment '{assignment}': {e}"
+        )
 
     if not r.text.strip():
-        click.secho("Error: Received empty test file. Contact your "
-                    "instructor.", fg="red", bold=True)
+        click.secho(
+            "Error: Received empty test file. Contact your instructor.",
+            fg="red",
+            bold=True,
+        )
         logger.exception(
-            f"Error: Received empty test file for assignment '{assignment}'.")
+            f"Error: Received empty test file for assignment '{assignment}'."
+        )
         raise TestFileError(
-            f"Error: Received empty test file for assignment '{assignment}'.")
+            f"Error: Received empty test file for assignment '{assignment}'."
+        )
 
     if "def test_" not in r.text:
-        click.secho(
-            "Warning: This may not be a valid test file.",
-            fg="yellow"
-        )
+        click.secho("Warning: This may not be a valid test file.", fg="yellow")
         logger.warning(
-            f"Warning: This may not be a valid test file for assignment '{assignment}'.")
+            f"Warning: This may not be a valid test file for assignment '{assignment}'."
+        )
     return r.text
 
 
@@ -139,9 +149,9 @@ def reload_module(module_name: str) -> None:
     import_module(name=module_name)
 
 
-def patch_input_output(monkeypatch: Any,
-                       test_inputs: list,
-                       module_name: str) -> StringIO:
+def patch_input_output(
+    monkeypatch: Any, test_inputs: list, module_name: str
+) -> StringIO:
     """Patch input() and standard out.
 
     :param monkeypatch: Pytest's monkeypatch fixture.
@@ -227,9 +237,11 @@ def _find_string_comparison_errors(expected: str, actual: str) -> list:
         errors.append(_find_incorrect_char(expected, actual))
     # Else highlight the length difference.
     else:
-        errors.append(f"The expected and actual string lengths are "
-                      f"different. Expected length: {expected_len}, but "
-                      f"got length: {actual_len}.")
+        errors.append(
+            f"The expected and actual string lengths are "
+            f"different. Expected length: {expected_len}, but "
+            f"got length: {actual_len}."
+        )
     return errors
 
 
@@ -246,10 +258,12 @@ def _find_incorrect_char(expected: str, actual: str) -> str:
     for idx, expected_char in enumerate(expected):
         actual_char = actual[idx]
         if expected_char != actual_char:
-            return (f"Character '{actual[idx]}' at index {idx} does "
-                    f"not match with the expect output. "
-                    f"This is the first mismatched character. There "
-                    f"may be others.")
+            return (
+                f"Character '{actual[idx]}' at index {idx} does "
+                f"not match with the expect output. "
+                f"This is the first mismatched character. There "
+                f"may be others."
+            )
 
 
 def _check_trailing_newline(expected: str, actual: str) -> str | None:
@@ -264,8 +278,10 @@ def _check_trailing_newline(expected: str, actual: str) -> str | None:
     :rtype: str | None
     """
     if actual.endswith("\n") and not expected.endswith("\n"):
-        return ("Your program/function's output has an extra newline "
-                "character \'\\n\' at the end.")
+        return (
+            "Your program/function's output has an extra newline "
+            "character '\\n' at the end."
+        )
 
 
 def _check_double_spaces(expected: str, actual: str) -> str | None:
@@ -280,8 +296,10 @@ def _check_double_spaces(expected: str, actual: str) -> str | None:
     :rtype: str | None
     """
     if "  " in actual and "  " not in expected:
-        return (f"There are two spaces at index {actual.index('  ')} "
-                f"of your program/function's output.")
+        return (
+            f"There are two spaces at index {actual.index('  ')} "
+            f"of your program/function's output."
+        )
 
 
 def _check_length_limit(actual: str, limit: int) -> str | None:
@@ -297,9 +315,11 @@ def _check_length_limit(actual: str, limit: int) -> str | None:
     """
     actual_len = len(actual)
     if actual_len > limit:
-        return (f"The actual string exceeds the maximum allowed "
-                f"length.\n Actual length is: {actual_len}\n"
-                f"Limit is: {limit}")
+        return (
+            f"The actual string exceeds the maximum allowed "
+            f"length.\n Actual length is: {actual_len}\n"
+            f"Limit is: {limit}"
+        )
 
 
 def _construct_test_url(chapter, assignment: str) -> str:
@@ -325,7 +345,7 @@ def _load_config_yaml() -> dict | None:
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     config_path = os.path.join(base_dir, "check_pfda", "config.yaml")
     try:
-        with open(config_path, 'r') as file:
+        with open(config_path, "r") as file:
             config = yaml.safe_load(file)
         return config
     except FileNotFoundError:
@@ -355,7 +375,9 @@ def get_current_assignment(repo_path: Path) -> AssignmentInfo | None:
     repo_path_str = str(repo_path)
     if "c07" in repo_path_str or "c08" in repo_path_str:
         click.secho(
-            "C07 and C08 do not have any automated tests. Refer to the README for more information.", fg="yellow")
+            "C07 and C08 do not have any automated tests. Refer to the README for more information.",
+            fg="yellow",
+        )
         return None
 
     config = _load_config_yaml()
@@ -365,7 +387,9 @@ def get_current_assignment(repo_path: Path) -> AssignmentInfo | None:
     return _match_assignment_from_config(config, repo_path_str)
 
 
-def _match_assignment_from_config(config: dict, repo_path_str: str) -> AssignmentInfo | None:
+def _match_assignment_from_config(
+    config: dict, repo_path_str: str
+) -> AssignmentInfo | None:
     """Match the repository path against the config to find the current assignment.
 
     This logic is necessary because there's no way to get the name of the current assignment without some
@@ -391,24 +415,22 @@ def _match_assignment_from_config(config: dict, repo_path_str: str) -> Assignmen
     :rtype: AssignmentInfo | None
     """
     # Iterate through chapters in the config
-    for chapter_key, assignments in config.get('tests', {}).items():
+    for chapter_key, assignments in config.get("tests", {}).items():
         # Skip the tests_repo_url key
-        if chapter_key == 'tests_repo_url':
+        if chapter_key == "tests_repo_url":
             continue
         if chapter_key not in repo_path_str:
             continue
         for assignment in assignments:
             if assignment in repo_path_str.replace("-", "_"):
                 result = AssignmentInfo(
-                    chapter=str(chapter_key)[1:],
-                    name=str(assignment).replace("-", "_")
+                    chapter=str(chapter_key)[1:], name=str(assignment).replace("-", "_")
                 )
                 logger.debug(f"Current assignment info: {result}")
                 return result
 
     # No match found
-    logger.debug(
-        "Error parsing cwd and matching it against config. Contact your TA.")
+    logger.debug("Error parsing cwd and matching it against config. Contact your TA.")
     logger.debug(f"Config: {config}")
     logger.debug(f"Repo path: {repo_path_str}")
     return None
@@ -416,6 +438,7 @@ def _match_assignment_from_config(config: dict, repo_path_str: str) -> Assignmen
 
 class RepositoryNotFound(Exception):
     """Raised when the repository root cannot be located."""
+
     pass
 
 
@@ -432,7 +455,9 @@ def _recurse_to_repo_path(current_path: Path) -> Path:
     return _recurse_to_repo_path_helper(current_path, searched_paths)
 
 
-def _recurse_to_repo_path_helper(current_path: Path, searched_paths: List[Path]) -> Path:
+def _recurse_to_repo_path_helper(
+    current_path: Path, searched_paths: List[Path]
+) -> Path:
     """Helper function that recursively searches upward and collects searched paths.
 
     :param current_path: The current path being checked.
@@ -498,8 +523,10 @@ def _log_package_info():
     logger.debug(f"Installed packages:")
     try:
         import pkg_resources
-        installed_packages = [(d.project_name, d.version)
-                              for d in pkg_resources.working_set]
+
+        installed_packages = [
+            (d.project_name, d.version) for d in pkg_resources.working_set
+        ]
         installed_packages.sort()
         for package_name, version in installed_packages:
             logger.debug(f"  {package_name}=={version}")

@@ -39,11 +39,12 @@ def check_for_updates() -> None:
         installed_tuple = tuple(int(x) for x in installed.split("."))
         latest_tuple = tuple(int(x) for x in latest.split("."))
         if installed_tuple < latest_tuple:
+            pip = "pip3" if platform.system() == "Darwin" else "pip"
             click.secho(
                 f"\nYour version of check-pfda ({installed}) is out of date. "
                 f"The latest version is {latest}.\n"
                 f"Please update before continuing:\n\n"
-                f"    pip install --upgrade check-pfda\n",
+                f"    {pip} install --upgrade check-pfda\n",
                 fg="red",
                 bold=True,
             )

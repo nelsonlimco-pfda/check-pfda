@@ -4,6 +4,7 @@ import logging
 import os
 import platform
 import sys
+import time
 from contextlib import contextmanager
 from importlib import import_module
 from io import StringIO
@@ -332,8 +333,8 @@ def _construct_test_url(chapter, assignment: str) -> str:
 
     base_url = config["tests"]["tests_repo_url"]
 
-    # query at the end forces browser to flush cache
-    return f"{base_url}/c{chapter}/test_{assignment}.py?now=0423"
+    # query at the end forces CDN to flush cache
+    return f"{base_url}/c{chapter}/test_{assignment}.py?now={int(time.time())}"
 
 
 def _load_config_yaml() -> dict | None:

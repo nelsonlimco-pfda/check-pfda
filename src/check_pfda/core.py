@@ -8,8 +8,9 @@ import logging
 
 from click import echo, secho
 import pytest
-from check_pfda.utils import (get_current_assignment, _add_to_path, _recurse_to_repo_path, 
-                              _set_up_test_file, _log_package_info, _log_platform_info)
+from check_pfda.utils import (check_for_updates, get_current_assignment, _add_to_path,
+                              _recurse_to_repo_path, _set_up_test_file, _log_package_info,
+                              _log_platform_info)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ REPO_LOG_FILE = REPO_PATH / "debug.log"
 
 def check_student_code(verbosity: int = 2, logger_level=logging.INFO) -> None:
     """Main check-pfda runner. Outputs results of tests to scripts in `src` to stdout."""
+    check_for_updates()
     _init_logger(REPO_LOG_FILE, logger_level)
     current_assignment = get_current_assignment(REPO_PATH)
     if not current_assignment:

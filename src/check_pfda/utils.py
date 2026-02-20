@@ -7,6 +7,7 @@ import sys
 import time
 from contextlib import contextmanager
 from importlib import import_module
+from importlib.metadata import version as get_installed_version, PackageNotFoundError
 from io import StringIO
 from pathlib import Path
 from typing import Any, List, NamedTuple
@@ -26,6 +27,29 @@ class AssignmentInfo(NamedTuple):
 
     chapter: str
     name: str
+
+
+def check_for_updates() -> None:
+    """Check PyPI for a newer version and exit with an upgrade prompt if one is available."""
+    try:
+        installed = get_installed_version("check-pfda")
+        r = requests.get("https://pypi.org/pypi/check-pfda/json", timeout=5)
+        r.raise_for_status()
+        latest = r.json()["info"]["version"]
+        installed_tuple = tuple(int(x) for x in installed.split("."))
+        latest_tuple = tuple(int(x) for x in latest.split("."))
+        if installed_tuple < latest_tuple:
+            click.secho(
+                f"\nYour version of check-pfda ({installed}) is out of date. "
+                f"The latest version is {latest}.\n"
+                f"Please update before continuing:\n\n"
+                f"    pip install --upgrade check-pfda\n",
+                fg="red",
+                bold=True,
+            )
+            sys.exit(1)
+    except (PackageNotFoundError, requests.exceptions.RequestException, KeyError, ValueError):
+        pass
 
 
 def assert_script_exists(

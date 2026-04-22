@@ -21,7 +21,11 @@ REPO_TESTS_DIR = REPO_PATH / ".tests"
 REPO_LOG_FILE = REPO_PATH / "debug.log"
 
 
-def check_student_code(verbosity: int = 2, logger_level=logging.INFO) -> None:
+def check_student_code(
+    verbosity: int = 2,
+    logger_level=logging.INFO,
+    tests_dir: Path | None = None,
+) -> None:
     """Main check-pfda runner. Outputs results of tests to scripts in `src` to stdout."""
     check_for_updates()
     _init_logger(REPO_LOG_FILE, logger_level)
@@ -34,7 +38,7 @@ def check_student_code(verbosity: int = 2, logger_level=logging.INFO) -> None:
 
     LOGGER.debug(f"Created/verified .tests directory: {REPO_TESTS_DIR}")
 
-    test_file_path =_set_up_test_file(current_assignment, REPO_TESTS_DIR)
+    test_file_path = _set_up_test_file(current_assignment, REPO_TESTS_DIR, tests_dir)
     secho(f"Checking chapter {current_assignment.chapter} assignment {current_assignment.name} at verbosity {verbosity}...", fg="green")
     with _add_to_path(REPO_SRC_DIR):
         _test_student_code(test_file_path, verbosity)

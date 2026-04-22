@@ -127,8 +127,40 @@ class TestFileError(Exception):
     pass
 
 
-def get_tests(chapter: str, assignment: str) -> str:
-    """Get tests for a given assignment."""
+def get_tests(
+    chapter: str, assignment: str, local_tests_root: Path | None = None
+) -> str:
+    """Get tests for a given assignment from the remote repo or a local directory."""
+    if local_tests_root is not None:
+        test_path = local_tests_root / f"c{chapter}" / f"test_{assignment}.py"
+        if not test_path.is_file():
+            msg = (
+                f"Local test file not found: {test_path}. "
+                f"Expected layout: <dir>/c{chapter}/test_{assignment}.py"
+            )
+            click.secho(msg, fg="red", bold=True)
+            logger.exception(msg)
+            raise TestFileError(msg)
+        content = test_path.read_text(encoding="utf-8")
+        if not content.strip():
+            click.secho(
+                "Error: Local test file is empty. Contact your instructor.",
+                fg="red",
+                bold=True,
+            )
+            logger.exception(
+                f"Error: Empty local test file for assignment '{assignment}'."
+            )
+            raise TestFileError(
+                f"Error: Received empty test file for assignment '{assignment}'."
+            )
+        if "def test_" not in content:
+            click.secho("Warning: This may not be a valid test file.", fg="yellow")
+            logger.warning(
+                f"Warning: This may not be a valid test file for assignment '{assignment}'."
+            )
+        return content
+
     tests_repo_url = _construct_test_url(chapter, assignment)
     try:
         r = requests.get(tests_repo_url, timeout=10)
@@ -510,11 +542,15 @@ def _recurse_to_repo_path_helper(
     return _recurse_to_repo_path_helper(current_path.parent, searched_paths)
 
 
-def _set_up_test_file(assignment: AssignmentInfo, repo_tests_dir: Path):
+def _set_up_test_file(
+    assignment: AssignmentInfo,
+    repo_tests_dir: Path,
+    local_tests_root: Path | None = None,
+):
     chapter = assignment.chapter
     assignment_name = assignment.name
     logger.debug(f"Chapter: {chapter}, Assignment: {assignment}")
-    tests = get_tests(chapter, assignment_name)
+    tests = get_tests(chapter, assignment_name, local_tests_root)
     test_file_path = repo_tests_dir / f"test_{assignment_name}.py"
     with open(test_file_path, "w", encoding="utf-8") as f:
         f.write(tests)

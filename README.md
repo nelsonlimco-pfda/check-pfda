@@ -44,7 +44,15 @@ pfda
 
 - **More/less detail**: `-v/--verbosity` (0–3). Example:
 
-- **Debug log**: `-d/--debug` writes a `debug.log` file in the assignment repo’s root folder:
+- **Debug log**: `--debug` writes a `debug.log` file in the assignment repo’s root folder.
+- **Use local tests folder**: `--dir <path>` loads tests from your local folder instead of the remote tests repo. Expected layout: `<dir>/cXX/test_<assignment>.py`.
+
+Examples:
+
+```bash
+pfda --debug
+pfda --dir /path/to/autograder-tests
+```
 
 ---
 
@@ -70,9 +78,9 @@ When a user runs `python -m check_pfda` the tool does roughly this:
 - **Figure out chapter + assignment**
   - it compares the repo’s folder path to the list in `src/check_pfda/config.yaml`
 - **Create a local `.tests/` folder**
-  - this is a temporary workspace for downloaded tests
-- **Download the test file**
-  - from the configured GitHub “raw” URL (see `config.yaml`)
+  - this is a temporary workspace for the test file used in the run
+- **Load the test file**
+  - from `--dir` if provided, otherwise from the configured GitHub “raw” URL (see `config.yaml`)
 - **Make sure Python can find the student code**
   - it temporarily tells Python to look in the assignment repo’s `src/` folder (so tests can `import shout`, etc.)
 - **Run `pytest` on that test file**
@@ -85,7 +93,7 @@ If something goes wrong (no match, network error, missing test file), the tool p
 The important files are:
 
 - **`src/check_pfda/cli.py`**
-  - defines the command-line interface (options like `--verbosity` and `--debug`)
+  - defines the command-line interface (options like `--verbosity`, `--dir`, and `--debug`)
 - **`src/check_pfda/core.py`**
   - the main “runner” that ties everything together
 - **`src/check_pfda/utils.py`**
@@ -242,6 +250,25 @@ Keep names simple:
 - Prefer **underscores** in `config.yaml` (example: `favorite_artist`)
 - The code will still match student repo folders that use hyphens (example: `favorite-artist`)
 
+#### Use a local tests folder instead of the remote repo
+
+If you have a local checkout of the tests repo, run with `--dir`:
+
+```bash
+pfda --dir /path/to/autograder-tests
+```
+
+Expected structure inside that folder:
+
+- `cXX/`
+- `test_<assignment>.py`
+
+For example:
+
+- `c01/test_shout.py`
+
+When `--dir` is provided, check-pfda reads tests from disk and does not fetch from `tests.tests_repo_url`.
+
 #### Change where tests are hosted (staging vs production)
 
 Edit `tests.tests_repo_url` in `src/check_pfda/config.yaml`.
@@ -286,6 +313,10 @@ Maintenance tip: try to keep these helpers backward-compatible, because changing
     - the tests repo URL changed
     - the test file doesn’t exist at the expected path
   - Fix: check `tests_repo_url` and confirm the test file name/location.
+
+- **“Local test file not found … Expected layout: `<dir>/cXX/test_<assignment>.py`”**
+  - You used `--dir`, but the chapter folder or filename doesn't match the current assignment.
+  - Fix: verify the local folder structure and file names.
 
 - **`.tests/` permission errors**
   - The tool needs to create `.tests/` and write a file inside it.

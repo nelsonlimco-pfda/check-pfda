@@ -7,7 +7,7 @@ name = "check-pfda"
 version = "1.0.2"
 description = "PFDA test running package."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = [
     "click",
     "pytest",
@@ -24,6 +24,10 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 check_pfda = ["*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
 
 [tool.pydoclint]
 style = 'sphinx'

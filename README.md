@@ -45,7 +45,7 @@ pfda
 - **More/less detail**: `-v/--verbosity` (0–3). Example:
 
 - **Debug log**: `--debug` writes a `debug.log` file in the assignment repo’s root folder.
-- **Use local tests folder**: `--dir <path>` loads tests from your local folder instead of the remote tests repo. Expected layout: `<dir>/cXX/test_<assignment>.py`.
+- **Use local tests folder**: `--dir <path>` loads tests from your local folder instead of the remote tests repo. Expected layout: `<dir>/cXX/test_<assignment>.py` or `<dir>/test_<assignment>.py`.
 
 Examples:
 
@@ -74,15 +74,15 @@ Keeping tests in a separate repo means instructors can update tests without havi
 When a user runs `python -m check_pfda` the tool does roughly this:
 
 - **Find the assignment repo root**
-  - starting from the current folder, it walks upward until it finds a folder name containing `pfda-c`
+  - starting from the current folder, it walks upward until it finds a folder containing a `.git` entry, or (as a fallback, for repos handed out without one) both a `README.md` and a `.gitignore`
 - **Figure out chapter + assignment**
   - it compares the repo’s folder path to the list in `src/check_pfda/config.yaml`
 - **Create a local `.tests/` folder**
   - this is a temporary workspace for the test file used in the run
 - **Load the test file**
-  - from `--dir` if provided, otherwise from the configured GitHub “raw” URL (see `config.yaml`)
+  - from `--dir` if provided, otherwise from a `tests/` folder in the repo if it has the matching test file, otherwise from the configured GitHub “raw” URL (see `config.yaml`). Whenever it isn’t the official remote copy, the tool says so.
 - **Make sure Python can find the student code**
-  - it temporarily tells Python to look in the assignment repo’s `src/` folder (so tests can `import shout`, etc.)
+  - it looks through the repo for every folder holding Python files (skipping `.git`, virtual environments, and `tests`/`test`) and temporarily tells Python to look in all of them, so tests can `import shout` etc. regardless of which folder the code lives in
 - **Run `pytest` on that test file**
   - it points `pytest` at the downloaded file and lets pytest print the results
 
@@ -133,7 +133,7 @@ Example student repo folder names:
 
 What the code does:
 
-- First, it finds the repo root folder whose name contains **`pfda-c`**.
+- First, it finds the repo root (see "Find the assignment repo root" above). The repo's folder name plays no part in this — only the path as a whole is checked against the chapter/assignment list below.
 - Then it loads `src/check_pfda/config.yaml` and checks:
   - does the path contain `c01`, `c02`, etc?
   - does the path contain one of the assignment names listed for that chapter?
@@ -145,8 +145,7 @@ Small detail (important in practice): folder names often use hyphens (`favorite-
 For the checker to work, the assignment repo usually needs:
 
 - a folder name that contains a chapter like `c01` and an assignment name like `shout`
-- a `src/` folder in the repo root (this is where student code lives)
-- the assignment’s Python file(s) inside `src/` (often `src/<assignment>.py`)
+- the assignment’s Python file(s) somewhere in the repo — `src/`, the repo root, or any other folder all work, since the tool looks for wherever the code actually is rather than requiring a `src/` folder specifically. Where the code *should* live for a given assignment is up to that assignment’s own tests, not this tool.
 
 ### Configuration: `config.yaml`
 

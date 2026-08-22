@@ -10,7 +10,7 @@ from importlib import import_module
 from importlib.metadata import version as get_installed_version, PackageNotFoundError
 from io import StringIO
 from pathlib import Path
-from typing import Any, List, NamedTuple
+from typing import Any, Callable, Generator, List, NamedTuple
 
 import click
 import pytest
@@ -127,39 +127,116 @@ class TestFileError(Exception):
     pass
 
 
+def _find_local_test_file(
+    root: Path, chapter: str, assignment: str
+) -> Path | None:
+    """Look for an assignment's test file inside a local directory.
+
+    Two layouts are accepted: the chaptered one used by ``--dir``
+    (``<root>/c01/test_shout.py``) and a flat one (``<root>/test_shout.py``),
+    which is how a repository's own ``tests`` directory is usually arranged.
+
+    :param root: The directory to look in.
+    :type root: Path
+    :param chapter: The chapter number, without its leading 'c'.
+    :type chapter: str
+    :param assignment: The assignment name.
+    :type assignment: str
+    :returns: The path to the test file, or None if neither layout matched.
+    :rtype: Path | None
+    """
+    filename = f"test_{assignment}.py"
+    for candidate in (root / f"c{chapter}" / filename, root / filename):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _read_local_test_file(test_path: Path, assignment: str) -> str:
+    """Read and sanity-check a test file that was found on disk.
+
+    :param test_path: The path to the test file.
+    :type test_path: Path
+    :param assignment: The assignment name, used in messages.
+    :type assignment: str
+    :returns: The contents of the test file.
+    :rtype: str
+    :raises TestFileError: If the file is empty.
+    """
+    content = test_path.read_text(encoding="utf-8")
+    if not content.strip():
+        click.secho(
+            "Error: Local test file is empty. Contact your instructor.",
+            fg="red",
+            bold=True,
+        )
+        logger.error(
+            f"Error: Empty local test file for assignment '{assignment}'."
+        )
+        raise TestFileError(
+            f"Error: Received empty test file for assignment '{assignment}'."
+        )
+    if "def test_" not in content:
+        click.secho("Warning: This may not be a valid test file.", fg="yellow")
+        logger.warning(
+            f"Warning: This may not be a valid test file for assignment "
+            f"'{assignment}'."
+        )
+    return content
+
+
 def get_tests(
-    chapter: str, assignment: str, local_tests_root: Path | None = None
+    chapter: str,
+    assignment: str,
+    local_tests_root: Path | None = None,
+    repo_path: Path | None = None,
 ) -> str:
-    """Get tests for a given assignment from the remote repo or a local directory."""
+    """Get tests for a given assignment.
+
+    Sources are tried in order: the directory given by ``--dir``, then the
+    repository's own ``tests`` directory, then the remote tests repository. An
+    explicit ``--dir`` beats auto-detection, and a missing file there is an
+    error rather than a fallback, since the flag states an intent. Whenever
+    tests come from somewhere other than the remote repository, the file being
+    used is announced.
+
+    :param chapter: The chapter number, without its leading 'c'.
+    :type chapter: str
+    :param assignment: The assignment name.
+    :type assignment: str
+    :param local_tests_root: Directory given by ``--dir``, if any.
+    :type local_tests_root: Path | None
+    :param repo_path: The assignment repository root, checked for a ``tests``
+        directory.
+    :type repo_path: Path | None
+    :returns: The contents of the test file.
+    :rtype: str
+    :raises TestFileError: If tests cannot be obtained from the chosen source.
+    """
     if local_tests_root is not None:
-        test_path = local_tests_root / f"c{chapter}" / f"test_{assignment}.py"
-        if not test_path.is_file():
+        test_path = _find_local_test_file(local_tests_root, chapter, assignment)
+        if test_path is None:
             msg = (
-                f"Local test file not found: {test_path}. "
-                f"Expected layout: <dir>/c{chapter}/test_{assignment}.py"
+                f"Local test file not found under {local_tests_root}. "
+                f"Expected <dir>/c{chapter}/test_{assignment}.py "
+                f"or <dir>/test_{assignment}.py"
             )
             click.secho(msg, fg="red", bold=True)
             logger.exception(msg)
             raise TestFileError(msg)
-        content = test_path.read_text(encoding="utf-8")
-        if not content.strip():
+        click.secho(f"Using tests from --dir: {test_path}", fg="yellow")
+        return _read_local_test_file(test_path, assignment)
+
+    if repo_path is not None:
+        test_path = _find_local_test_file(repo_path / "tests", chapter, assignment)
+        if test_path is not None:
             click.secho(
-                "Error: Local test file is empty. Contact your instructor.",
-                fg="red",
-                bold=True,
+                f"Using tests found in this repository: "
+                f"{test_path.relative_to(repo_path)} "
+                f"(not the official downloaded tests).",
+                fg="yellow",
             )
-            logger.exception(
-                f"Error: Empty local test file for assignment '{assignment}'."
-            )
-            raise TestFileError(
-                f"Error: Received empty test file for assignment '{assignment}'."
-            )
-        if "def test_" not in content:
-            click.secho("Warning: This may not be a valid test file.", fg="yellow")
-            logger.warning(
-                f"Warning: This may not be a valid test file for assignment '{assignment}'."
-            )
-        return content
+            return _read_local_test_file(test_path, assignment)
 
     tests_repo_url = _construct_test_url(chapter, assignment)
     try:
@@ -500,57 +577,125 @@ class RepositoryNotFound(Exception):
     pass
 
 
+def _has_git_entry(path: Path) -> bool:
+    """Check whether ``path`` holds a ``.git`` entry, marking it a repo root.
+
+    Usually ``.git`` is a directory. In worktrees and submodules it is instead
+    a file holding a single ``gitdir: <path>`` line pointing at the real git
+    data, so a directory-only check would walk past those roots. The contents
+    are verified rather than trusting the name alone, so an unrelated file that
+    happens to be called ``.git`` is not mistaken for a repository root.
+
+    :param path: The directory to check.
+    :type path: Path
+    :returns: True if the directory holds a git directory or pointer file.
+    :rtype: bool
+    """
+    git_path = path / ".git"
+    if git_path.is_dir():
+        return True
+    if not git_path.is_file():
+        return False
+    try:
+        return git_path.read_text(encoding="utf-8").startswith("gitdir:")
+    except OSError as e:
+        logger.debug(f"Could not read {git_path}: {e}")
+        return False
+    except UnicodeDecodeError:
+        logger.debug(f"{git_path} is not a readable git pointer file.")
+        return False
+
+
+def _has_repo_doc_files(path: Path) -> bool:
+    """Check whether ``path`` holds both a ``README.md`` and a ``.gitignore``.
+
+    Fallback for repositories handed out without a ``.git`` directory, such as a
+    zip download. Both files are required: a lone ``README.md`` appears in
+    subdirectories often enough to cause false positives on its own.
+
+    :param path: The directory to check.
+    :type path: Path
+    :returns: True if both files exist in the directory.
+    :rtype: bool
+    """
+    return (path / "README.md").is_file() and (path / ".gitignore").is_file()
+
+
 def _recurse_to_repo_path(current_path: Path) -> Path:
-    """Recursively search upward for a directory containing 'pfda-c'.
+    """Recursively search upward for the assignment repository's root directory.
+
+    Runs two separate passes: first looking for a ``.git`` entry, then falling
+    back to a ``README.md`` + ``.gitignore`` pair. Separate passes matter
+    because students often run from inside a subdirectory such as ``src``. If
+    that subdirectory happens to hold a README and a gitignore, a combined
+    check would stop there even though the real root above it has a ``.git``.
+    Two passes let the stronger signal win regardless of which directory is
+    nearer.
 
     :param current_path: The starting path to search upward from.
     :type current_path: Path
-    :returns: The path to the directory whose name contains ``pfda-c``.
+    :returns: The path to the repository root.
     :rtype: Path
-    :raises RepositoryNotFound: If no directory named ``pfda-c`` is found up to the filesystem root.
+    :raises RepositoryNotFound: If no repository root is found up to root.
     """
-    searched_paths = []
-    return _recurse_to_repo_path_helper(current_path, searched_paths)
+    searched_paths: List[Path] = []
+    for is_repo_root in (_has_git_entry, _has_repo_doc_files):
+        searched_paths = []
+        found = _recurse_to_repo_path_helper(
+            current_path, searched_paths, is_repo_root
+        )
+        if found is not None:
+            return found
+
+    path_list = "\n  ".join(str(p) for p in searched_paths)
+    raise RepositoryNotFound(
+        f"No repository root found starting from {searched_paths[0]!s}.\n"
+        f"Looked for a '.git' entry, then for a 'README.md' and "
+        f"'.gitignore' pair.\n"
+        f"Searched paths:\n  {path_list}"
+    )
 
 
 def _recurse_to_repo_path_helper(
-    current_path: Path, searched_paths: List[Path]
-) -> Path:
+    current_path: Path,
+    searched_paths: List[Path],
+    is_repo_root: Callable[[Path], bool],
+) -> Path | None:
     """Helper function that recursively searches upward and collects searched paths.
 
     :param current_path: The current path being checked.
     :type current_path: Path
     :param searched_paths: List to accumulate all paths that were searched.
-    :type searched_paths: list[Path]
-    :returns: The path to the directory whose name contains ``pfda-c``.
-    :rtype: Path
-    :raises RepositoryNotFound: If no directory named ``pfda-c`` is found up to the filesystem root.
+    :type searched_paths: List[Path]
+    :param is_repo_root: Predicate deciding whether a directory is the root.
+    :type is_repo_root: Callable[[Path], bool]
+    :returns: The repository root, or None if the filesystem root was reached.
+    :rtype: Path | None
     """
     searched_paths.append(current_path)
 
-    if "pfda-c" in current_path.name:
+    if is_repo_root(current_path):
         return current_path
 
     # filesystem root
     if current_path.parent == current_path:
-        path_list = "\n  ".join(str(p) for p in searched_paths)
-        raise RepositoryNotFound(
-            f"No 'pfda-c' repository found starting from {searched_paths[0]!s}.\n"
-            f"Searched paths:\n  {path_list}"
-        )
+        return None
 
-    return _recurse_to_repo_path_helper(current_path.parent, searched_paths)
+    return _recurse_to_repo_path_helper(
+        current_path.parent, searched_paths, is_repo_root
+    )
 
 
 def _set_up_test_file(
     assignment: AssignmentInfo,
     repo_tests_dir: Path,
     local_tests_root: Path | None = None,
+    repo_path: Path | None = None,
 ):
     chapter = assignment.chapter
     assignment_name = assignment.name
     logger.debug(f"Chapter: {chapter}, Assignment: {assignment}")
-    tests = get_tests(chapter, assignment_name, local_tests_root)
+    tests = get_tests(chapter, assignment_name, local_tests_root, repo_path)
     test_file_path = repo_tests_dir / f"test_{assignment_name}.py"
     with open(test_file_path, "w", encoding="utf-8") as f:
         f.write(tests)
@@ -558,18 +703,102 @@ def _set_up_test_file(
     return test_file_path
 
 
+# Directory names that never hold student code. Dot-prefixed directories are
+# skipped separately, which covers .git, .tests and .venv. 'tests' and 'test'
+# are excluded so a repository's own test file cannot shadow the copy being
+# run out of .tests/. That directory is still used as a source of tests --
+# see _find_local_test_file.
+_SKIPPED_DIR_NAMES = frozenset(
+    {"tests", "test", "__pycache__", "node_modules", "site-packages"}
+)
+
+
+def _is_skipped_dir(path: Path) -> bool:
+    """Check whether a directory should be excluded when looking for student code.
+
+    :param path: The directory to check.
+    :type path: Path
+    :returns: True if the directory should be skipped.
+    :rtype: bool
+    """
+    if path.name.startswith(".") or path.name in _SKIPPED_DIR_NAMES:
+        return True
+    # Identifies a virtual environment by what it contains, not by its name.
+    return (path / "pyvenv.cfg").is_file()
+
+
+def find_student_code_dirs(repo_path: Path) -> List[Path]:
+    """Find the directories in a repository that hold student code.
+
+    The repository root is always included. Beyond that, any directory
+    holding at least one ``.py`` file qualifies. Student code is therefore
+    importable wherever it lives, rather than only from a hardcoded ``src``
+    directory.
+
+    :param repo_path: The path to the repository root.
+    :type repo_path: Path
+    :returns: Directories to place on ``sys.path``, shallowest first.
+    :rtype: list[Path]
+    """
+    found = {repo_path}
+
+    def walk(directory: Path) -> None:
+        try:
+            entries = list(directory.iterdir())
+        except OSError as e:
+            logger.debug(f"Could not read directory {directory}: {e}")
+            return
+        for entry in entries:
+            if not entry.is_dir() or _is_skipped_dir(entry):
+                continue
+            if any(entry.glob("*.py")):
+                found.add(entry)
+            walk(entry)
+
+    walk(repo_path)
+    ordered = sorted(
+        found, key=lambda p: (len(p.relative_to(repo_path).parts), str(p))
+    )
+    logger.debug(f"Student code directories: {[str(p) for p in ordered]}")
+    return ordered
+
+
 @contextmanager
-def _add_to_path(path: str | Path):
-    """Temporarily add a directory to sys.path."""
-    path = str(Path(path).resolve())
-    path_already_in_sys_path = path in sys.path
-    if not path_already_in_sys_path:
-        sys.path.insert(0, path)
+def _add_to_path(
+    paths: str | Path | List[str | Path],
+) -> Generator[None, None, None]:
+    """Temporarily add one or more directories to sys.path.
+
+    Accepts a single directory or a list of them. Directories end up in
+    ``sys.path`` in the order given, so the caller's ordering is the import
+    search order. Any directory already on ``sys.path`` is left alone and is
+    not removed afterwards. Whatever happens inside the block, ``sys.path``
+    is restored.
+
+    :param paths: A directory, or a list of directories in the order they
+        should be searched.
+    :type paths: str | Path | List[str | Path]
+    :yields: None. Used only to bracket the block where the paths are on
+        ``sys.path``.
+    :ytype: None
+    """
+    if isinstance(paths, (str, Path)):
+        paths = [paths]
+
+    added = []
+    # Reversed because each insert goes to the front, so the first directory
+    # given is inserted last and therefore ends up first in the search order.
+    for path in reversed(paths):
+        resolved = str(Path(path).resolve())
+        if resolved not in sys.path:
+            sys.path.insert(0, resolved)
+            added.append(resolved)
     try:
         yield
     finally:
-        if not path_already_in_sys_path and path in sys.path:
-            sys.path.remove(path)
+        for resolved in added:
+            if resolved in sys.path:
+                sys.path.remove(resolved)
 
 
 def _log_platform_info():

@@ -1,24 +1,34 @@
 """Collect tests and run them on supplied code."""
 
-import os
-from pathlib import Path
-import sys
 import logging
+import os
+import sys
+from pathlib import Path
 
-
-from click import echo, secho
 import pytest
-from check_pfda.utils import (check_for_updates, get_current_assignment, _add_to_path,
-                              _recurse_to_repo_path, _set_up_test_file, _log_package_info,
-                              _log_platform_info)
+from click import echo, secho
+
+from check_pfda.utils import (
+    RepositoryNotFound,
+    _add_to_path,
+    _log_package_info,
+    _log_platform_info,
+    _recurse_to_repo_path,
+    _set_up_test_file,
+    check_for_updates,
+    find_student_code_dirs,
+    get_current_assignment,
+)
 
 
 LOGGER = logging.getLogger(__name__)
 
-REPO_PATH = _recurse_to_repo_path(Path.cwd())
-REPO_SRC_DIR = REPO_PATH / "src"
-REPO_TESTS_DIR = REPO_PATH / ".tests"
-REPO_LOG_FILE = REPO_PATH / "debug.log"
+# Compatibility shim: the downloaded autograder tests do
+# `from check_pfda.core import REPO_PATH`, so this name has to exist as a
+# module attribute by the time pytest imports them. It stays None until a
+# check_student_code() run actually locates a repository, so importing this
+# module never triggers the filesystem lookup on its own.
+REPO_PATH: Path | None = None
 
 
 def check_student_code(
@@ -26,21 +36,48 @@ def check_student_code(
     logger_level=logging.INFO,
     tests_dir: Path | None = None,
 ) -> None:
-    """Main check-pfda runner. Outputs results of tests to scripts in `src` to stdout."""
+    """Run the checker: outputs results of the assignment's tests to stdout."""
     check_for_updates()
-    _init_logger(REPO_LOG_FILE, logger_level)
-    current_assignment = get_current_assignment(REPO_PATH)
+
+    # Looked up here rather than at import time, so a missing repository is
+    # reported as a message instead of a traceback raised during import.
+    try:
+        repo_path = _recurse_to_repo_path(Path.cwd())
+    except RepositoryNotFound as e:
+        secho(
+            "Couldn't find your assignment repository. Make sure you're "
+            "running this from inside your assignment folder.",
+            fg="red",
+            bold=True,
+        )
+        LOGGER.debug(f"Repository lookup failed: {e}")
+        return
+
+    global REPO_PATH
+    REPO_PATH = repo_path
+
+    repo_tests_dir = repo_path / ".tests"
+    _init_logger(repo_path / "debug.log", logger_level)
+    LOGGER.debug(f"Repository root: {repo_path}")
+
+    current_assignment = get_current_assignment(repo_path)
     if not current_assignment:
         echo("Unable to match chapter and assignment against cwd. Contact your TA.")
         return
 
-    REPO_TESTS_DIR.mkdir(exist_ok=True)
+    repo_tests_dir.mkdir(exist_ok=True)
 
-    LOGGER.debug(f"Created/verified .tests directory: {REPO_TESTS_DIR}")
+    LOGGER.debug(f"Created/verified .tests directory: {repo_tests_dir}")
 
-    test_file_path = _set_up_test_file(current_assignment, REPO_TESTS_DIR, tests_dir)
-    secho(f"Checking chapter {current_assignment.chapter} assignment {current_assignment.name} at verbosity {verbosity}...", fg="green")
-    with _add_to_path(REPO_SRC_DIR):
+    test_file_path = _set_up_test_file(
+        current_assignment, repo_tests_dir, tests_dir, repo_path
+    )
+    secho(
+        f"Checking chapter {current_assignment.chapter} assignment "
+        f"{current_assignment.name} at verbosity {verbosity}...",
+        fg="green",
+    )
+    with _add_to_path(find_student_code_dirs(repo_path)):
         _test_student_code(test_file_path, verbosity)
 
 

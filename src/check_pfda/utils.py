@@ -170,7 +170,7 @@ def _read_local_test_file(test_path: Path, assignment: str) -> str:
             fg="red",
             bold=True,
         )
-        logger.exception(
+        logger.error(
             f"Error: Empty local test file for assignment '{assignment}'."
         )
         raise TestFileError(

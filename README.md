@@ -74,7 +74,7 @@ Keeping tests in a separate repo means instructors can update tests without havi
 When a user runs `python -m check_pfda` the tool does roughly this:
 
 - **Find the assignment repo root**
-  - starting from the current folder, it walks upward until it finds a folder name containing `pfda-c`
+  - starting from the current folder, it walks upward until it finds a folder containing a `.git` entry, or (as a fallback, for repos handed out without one) both a `README.md` and a `.gitignore`
 - **Figure out chapter + assignment**
   - it compares the repo’s folder path to the list in `src/check_pfda/config.yaml`
 - **Create a local `.tests/` folder**
@@ -133,7 +133,7 @@ Example student repo folder names:
 
 What the code does:
 
-- First, it finds the repo root folder whose name contains **`pfda-c`**.
+- First, it finds the repo root (see "Find the assignment repo root" above). The repo's folder name plays no part in this — only the path as a whole is checked against the chapter/assignment list below.
 - Then it loads `src/check_pfda/config.yaml` and checks:
   - does the path contain `c01`, `c02`, etc?
   - does the path contain one of the assignment names listed for that chapter?

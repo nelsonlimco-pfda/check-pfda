@@ -10,7 +10,7 @@ from importlib import import_module
 from importlib.metadata import version as get_installed_version, PackageNotFoundError
 from io import StringIO
 from pathlib import Path
-from typing import Any, List, NamedTuple
+from typing import Any, Callable, List, NamedTuple
 
 import click
 import pytest
@@ -500,46 +500,113 @@ class RepositoryNotFound(Exception):
     pass
 
 
+def _has_git_entry(path: Path) -> bool:
+    """Check whether ``path`` holds a ``.git`` entry, marking it a repo root.
+
+    Usually ``.git`` is a directory. In worktrees and submodules it is instead
+    a file holding a single ``gitdir: <path>`` line pointing at the real git
+    data, so a directory-only check would walk past those roots. The contents
+    are verified rather than trusting the name alone, so an unrelated file that
+    happens to be called ``.git`` is not mistaken for a repository root.
+
+    :param path: The directory to check.
+    :type path: Path
+    :returns: True if the directory holds a git directory or pointer file.
+    :rtype: bool
+    """
+    git_path = path / ".git"
+    if git_path.is_dir():
+        return True
+    if not git_path.is_file():
+        return False
+    try:
+        return git_path.read_text(encoding="utf-8").startswith("gitdir:")
+    except OSError as e:
+        logger.debug(f"Could not read {git_path}: {e}")
+        return False
+    except UnicodeDecodeError:
+        logger.debug(f"{git_path} is not a readable git pointer file.")
+        return False
+
+
+def _has_repo_doc_files(path: Path) -> bool:
+    """Check whether ``path`` holds both a ``README.md`` and a ``.gitignore``.
+
+    Fallback for repositories handed out without a ``.git`` directory, such as a
+    zip download. Both files are required: a lone ``README.md`` appears in
+    subdirectories often enough to cause false positives on its own.
+
+    :param path: The directory to check.
+    :type path: Path
+    :returns: True if both files exist in the directory.
+    :rtype: bool
+    """
+    return (path / "README.md").exists() and (path / ".gitignore").exists()
+
+
 def _recurse_to_repo_path(current_path: Path) -> Path:
-    """Recursively search upward for a directory containing 'pfda-c'.
+    """Recursively search upward for the assignment repository's root directory.
+
+    Runs two separate passes: first looking for a ``.git`` entry, then falling
+    back to a ``README.md`` + ``.gitignore`` pair. Separate passes matter
+    because students often run from inside a subdirectory such as ``src``. If
+    that subdirectory happens to hold a README and a gitignore, a combined
+    check would stop there even though the real root above it has a ``.git``.
+    Two passes let the stronger signal win regardless of which directory is
+    nearer.
 
     :param current_path: The starting path to search upward from.
     :type current_path: Path
-    :returns: The path to the directory whose name contains ``pfda-c``.
+    :returns: The path to the repository root.
     :rtype: Path
-    :raises RepositoryNotFound: If no directory named ``pfda-c`` is found up to the filesystem root.
+    :raises RepositoryNotFound: If no repository root is found up to root.
     """
-    searched_paths = []
-    return _recurse_to_repo_path_helper(current_path, searched_paths)
+    searched_paths: List[Path] = []
+    for is_repo_root in (_has_git_entry, _has_repo_doc_files):
+        searched_paths = []
+        found = _recurse_to_repo_path_helper(
+            current_path, searched_paths, is_repo_root
+        )
+        if found is not None:
+            return found
+
+    path_list = "\n  ".join(str(p) for p in searched_paths)
+    raise RepositoryNotFound(
+        f"No repository root found starting from {searched_paths[0]!s}.\n"
+        f"Looked for a '.git' entry, then for a 'README.md' and "
+        f"'.gitignore' pair.\n"
+        f"Searched paths:\n  {path_list}"
+    )
 
 
 def _recurse_to_repo_path_helper(
-    current_path: Path, searched_paths: List[Path]
-) -> Path:
+    current_path: Path,
+    searched_paths: List[Path],
+    is_repo_root: Callable[[Path], bool],
+) -> Path | None:
     """Helper function that recursively searches upward and collects searched paths.
 
     :param current_path: The current path being checked.
     :type current_path: Path
     :param searched_paths: List to accumulate all paths that were searched.
-    :type searched_paths: list[Path]
-    :returns: The path to the directory whose name contains ``pfda-c``.
-    :rtype: Path
-    :raises RepositoryNotFound: If no directory named ``pfda-c`` is found up to the filesystem root.
+    :type searched_paths: List[Path]
+    :param is_repo_root: Predicate deciding whether a directory is the root.
+    :type is_repo_root: Callable[[Path], bool]
+    :returns: The repository root, or None if the filesystem root was reached.
+    :rtype: Path | None
     """
     searched_paths.append(current_path)
 
-    if "pfda-c" in current_path.name:
+    if is_repo_root(current_path):
         return current_path
 
     # filesystem root
     if current_path.parent == current_path:
-        path_list = "\n  ".join(str(p) for p in searched_paths)
-        raise RepositoryNotFound(
-            f"No 'pfda-c' repository found starting from {searched_paths[0]!s}.\n"
-            f"Searched paths:\n  {path_list}"
-        )
+        return None
 
-    return _recurse_to_repo_path_helper(current_path.parent, searched_paths)
+    return _recurse_to_repo_path_helper(
+        current_path.parent, searched_paths, is_repo_root
+    )
 
 
 def _set_up_test_file(

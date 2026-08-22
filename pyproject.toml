@@ -25,6 +25,10 @@ where = ["src"]
 [tool.setuptools.package-data]
 check_pfda = ["*.yaml"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
 [tool.pydoclint]
 style = 'sphinx'
 exclude = '\.git|\.venv'

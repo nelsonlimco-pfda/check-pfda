@@ -618,7 +618,7 @@ def _has_repo_doc_files(path: Path) -> bool:
     :returns: True if both files exist in the directory.
     :rtype: bool
     """
-    return (path / "README.md").exists() and (path / ".gitignore").exists()
+    return (path / "README.md").is_file() and (path / ".gitignore").is_file()
 
 
 def _recurse_to_repo_path(current_path: Path) -> Path:

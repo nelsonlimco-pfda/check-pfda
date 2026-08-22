@@ -45,7 +45,7 @@ pfda
 - **More/less detail**: `-v/--verbosity` (0–3). Example:
 
 - **Debug log**: `--debug` writes a `debug.log` file in the assignment repo’s root folder.
-- **Use local tests folder**: `--dir <path>` loads tests from your local folder instead of the remote tests repo. Expected layout: `<dir>/cXX/test_<assignment>.py`.
+- **Use local tests folder**: `--dir <path>` loads tests from your local folder instead of the remote tests repo. Expected layout: `<dir>/cXX/test_<assignment>.py` or `<dir>/test_<assignment>.py`.
 
 Examples:
 
@@ -80,7 +80,7 @@ When a user runs `python -m check_pfda` the tool does roughly this:
 - **Create a local `.tests/` folder**
   - this is a temporary workspace for the test file used in the run
 - **Load the test file**
-  - from `--dir` if provided, otherwise from the configured GitHub “raw” URL (see `config.yaml`)
+  - from `--dir` if provided, otherwise from a `tests/` folder in the repo if it has the matching test file, otherwise from the configured GitHub “raw” URL (see `config.yaml`). Whenever it isn’t the official remote copy, the tool says so.
 - **Make sure Python can find the student code**
   - it looks through the repo for every folder holding Python files (skipping `.git`, virtual environments, and `tests`/`test`) and temporarily tells Python to look in all of them, so tests can `import shout` etc. regardless of which folder the code lives in
 - **Run `pytest` on that test file**

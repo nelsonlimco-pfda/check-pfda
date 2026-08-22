@@ -69,7 +69,9 @@ def check_student_code(
 
     LOGGER.debug(f"Created/verified .tests directory: {repo_tests_dir}")
 
-    test_file_path = _set_up_test_file(current_assignment, repo_tests_dir, tests_dir)
+    test_file_path = _set_up_test_file(
+        current_assignment, repo_tests_dir, tests_dir, repo_path
+    )
     secho(
         f"Checking chapter {current_assignment.chapter} assignment "
         f"{current_assignment.name} at verbosity {verbosity}...",

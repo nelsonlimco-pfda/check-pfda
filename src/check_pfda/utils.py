@@ -127,39 +127,116 @@ class TestFileError(Exception):
     pass
 
 
+def _find_local_test_file(
+    root: Path, chapter: str, assignment: str
+) -> Path | None:
+    """Look for an assignment's test file inside a local directory.
+
+    Two layouts are accepted: the chaptered one used by ``--dir``
+    (``<root>/c01/test_shout.py``) and a flat one (``<root>/test_shout.py``),
+    which is how a repository's own ``tests`` directory is usually arranged.
+
+    :param root: The directory to look in.
+    :type root: Path
+    :param chapter: The chapter number, without its leading 'c'.
+    :type chapter: str
+    :param assignment: The assignment name.
+    :type assignment: str
+    :returns: The path to the test file, or None if neither layout matched.
+    :rtype: Path | None
+    """
+    filename = f"test_{assignment}.py"
+    for candidate in (root / f"c{chapter}" / filename, root / filename):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _read_local_test_file(test_path: Path, assignment: str) -> str:
+    """Read and sanity-check a test file that was found on disk.
+
+    :param test_path: The path to the test file.
+    :type test_path: Path
+    :param assignment: The assignment name, used in messages.
+    :type assignment: str
+    :returns: The contents of the test file.
+    :rtype: str
+    :raises TestFileError: If the file is empty.
+    """
+    content = test_path.read_text(encoding="utf-8")
+    if not content.strip():
+        click.secho(
+            "Error: Local test file is empty. Contact your instructor.",
+            fg="red",
+            bold=True,
+        )
+        logger.exception(
+            f"Error: Empty local test file for assignment '{assignment}'."
+        )
+        raise TestFileError(
+            f"Error: Received empty test file for assignment '{assignment}'."
+        )
+    if "def test_" not in content:
+        click.secho("Warning: This may not be a valid test file.", fg="yellow")
+        logger.warning(
+            f"Warning: This may not be a valid test file for assignment "
+            f"'{assignment}'."
+        )
+    return content
+
+
 def get_tests(
-    chapter: str, assignment: str, local_tests_root: Path | None = None
+    chapter: str,
+    assignment: str,
+    local_tests_root: Path | None = None,
+    repo_path: Path | None = None,
 ) -> str:
-    """Get tests for a given assignment from the remote repo or a local directory."""
+    """Get tests for a given assignment.
+
+    Sources are tried in order: the directory given by ``--dir``, then the
+    repository's own ``tests`` directory, then the remote tests repository. An
+    explicit ``--dir`` beats auto-detection, and a missing file there is an
+    error rather than a fallback, since the flag states an intent. Whenever
+    tests come from somewhere other than the remote repository, the file being
+    used is announced.
+
+    :param chapter: The chapter number, without its leading 'c'.
+    :type chapter: str
+    :param assignment: The assignment name.
+    :type assignment: str
+    :param local_tests_root: Directory given by ``--dir``, if any.
+    :type local_tests_root: Path | None
+    :param repo_path: The assignment repository root, checked for a ``tests``
+        directory.
+    :type repo_path: Path | None
+    :returns: The contents of the test file.
+    :rtype: str
+    :raises TestFileError: If tests cannot be obtained from the chosen source.
+    """
     if local_tests_root is not None:
-        test_path = local_tests_root / f"c{chapter}" / f"test_{assignment}.py"
-        if not test_path.is_file():
+        test_path = _find_local_test_file(local_tests_root, chapter, assignment)
+        if test_path is None:
             msg = (
-                f"Local test file not found: {test_path}. "
-                f"Expected layout: <dir>/c{chapter}/test_{assignment}.py"
+                f"Local test file not found under {local_tests_root}. "
+                f"Expected <dir>/c{chapter}/test_{assignment}.py "
+                f"or <dir>/test_{assignment}.py"
             )
             click.secho(msg, fg="red", bold=True)
             logger.exception(msg)
             raise TestFileError(msg)
-        content = test_path.read_text(encoding="utf-8")
-        if not content.strip():
+        click.secho(f"Using tests from --dir: {test_path}", fg="yellow")
+        return _read_local_test_file(test_path, assignment)
+
+    if repo_path is not None:
+        test_path = _find_local_test_file(repo_path / "tests", chapter, assignment)
+        if test_path is not None:
             click.secho(
-                "Error: Local test file is empty. Contact your instructor.",
-                fg="red",
-                bold=True,
+                f"Using tests found in this repository: "
+                f"{test_path.relative_to(repo_path)} "
+                f"(not the official downloaded tests).",
+                fg="yellow",
             )
-            logger.exception(
-                f"Error: Empty local test file for assignment '{assignment}'."
-            )
-            raise TestFileError(
-                f"Error: Received empty test file for assignment '{assignment}'."
-            )
-        if "def test_" not in content:
-            click.secho("Warning: This may not be a valid test file.", fg="yellow")
-            logger.warning(
-                f"Warning: This may not be a valid test file for assignment '{assignment}'."
-            )
-        return content
+            return _read_local_test_file(test_path, assignment)
 
     tests_repo_url = _construct_test_url(chapter, assignment)
     try:
@@ -613,11 +690,12 @@ def _set_up_test_file(
     assignment: AssignmentInfo,
     repo_tests_dir: Path,
     local_tests_root: Path | None = None,
+    repo_path: Path | None = None,
 ):
     chapter = assignment.chapter
     assignment_name = assignment.name
     logger.debug(f"Chapter: {chapter}, Assignment: {assignment}")
-    tests = get_tests(chapter, assignment_name, local_tests_root)
+    tests = get_tests(chapter, assignment_name, local_tests_root, repo_path)
     test_file_path = repo_tests_dir / f"test_{assignment_name}.py"
     with open(test_file_path, "w", encoding="utf-8") as f:
         f.write(tests)

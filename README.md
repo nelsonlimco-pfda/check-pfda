@@ -82,7 +82,7 @@ When a user runs `python -m check_pfda` the tool does roughly this:
 - **Load the test file**
   - from `--dir` if provided, otherwise from the configured GitHub “raw” URL (see `config.yaml`)
 - **Make sure Python can find the student code**
-  - it temporarily tells Python to look in the assignment repo’s `src/` folder (so tests can `import shout`, etc.)
+  - it looks through the repo for every folder holding Python files (skipping `.git`, virtual environments, and `tests`/`test`) and temporarily tells Python to look in all of them, so tests can `import shout` etc. regardless of which folder the code lives in
 - **Run `pytest` on that test file**
   - it points `pytest` at the downloaded file and lets pytest print the results
 
@@ -145,8 +145,7 @@ Small detail (important in practice): folder names often use hyphens (`favorite-
 For the checker to work, the assignment repo usually needs:
 
 - a folder name that contains a chapter like `c01` and an assignment name like `shout`
-- a `src/` folder in the repo root (this is where student code lives)
-- the assignment’s Python file(s) inside `src/` (often `src/<assignment>.py`)
+- the assignment’s Python file(s) somewhere in the repo — `src/`, the repo root, or any other folder all work, since the tool looks for wherever the code actually is rather than requiring a `src/` folder specifically. Where the code *should* live for a given assignment is up to that assignment’s own tests, not this tool.
 
 ### Configuration: `config.yaml`
 

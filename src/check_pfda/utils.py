@@ -10,7 +10,7 @@ from importlib import import_module
 from importlib.metadata import version as get_installed_version, PackageNotFoundError
 from io import StringIO
 from pathlib import Path
-from typing import Any, Callable, List, NamedTuple
+from typing import Any, Callable, Generator, List, NamedTuple
 
 import click
 import pytest
@@ -625,18 +625,102 @@ def _set_up_test_file(
     return test_file_path
 
 
+# Directory names that never hold student code. Dot-prefixed directories are
+# skipped separately, which covers .git, .tests and .venv. 'tests' and 'test'
+# are excluded so a repository's own test file cannot shadow the copy being
+# run out of .tests/. That directory is still used as a source of tests --
+# see _find_local_test_file.
+_SKIPPED_DIR_NAMES = frozenset(
+    {"tests", "test", "__pycache__", "node_modules", "site-packages"}
+)
+
+
+def _is_skipped_dir(path: Path) -> bool:
+    """Check whether a directory should be excluded when looking for student code.
+
+    :param path: The directory to check.
+    :type path: Path
+    :returns: True if the directory should be skipped.
+    :rtype: bool
+    """
+    if path.name.startswith(".") or path.name in _SKIPPED_DIR_NAMES:
+        return True
+    # Identifies a virtual environment by what it contains, not by its name.
+    return (path / "pyvenv.cfg").is_file()
+
+
+def find_student_code_dirs(repo_path: Path) -> List[Path]:
+    """Find the directories in a repository that hold student code.
+
+    The repository root is always included. Beyond that, any directory
+    holding at least one ``.py`` file qualifies. Student code is therefore
+    importable wherever it lives, rather than only from a hardcoded ``src``
+    directory.
+
+    :param repo_path: The path to the repository root.
+    :type repo_path: Path
+    :returns: Directories to place on ``sys.path``, shallowest first.
+    :rtype: list[Path]
+    """
+    found = {repo_path}
+
+    def walk(directory: Path) -> None:
+        try:
+            entries = list(directory.iterdir())
+        except OSError as e:
+            logger.debug(f"Could not read directory {directory}: {e}")
+            return
+        for entry in entries:
+            if not entry.is_dir() or _is_skipped_dir(entry):
+                continue
+            if any(entry.glob("*.py")):
+                found.add(entry)
+            walk(entry)
+
+    walk(repo_path)
+    ordered = sorted(
+        found, key=lambda p: (len(p.relative_to(repo_path).parts), str(p))
+    )
+    logger.debug(f"Student code directories: {[str(p) for p in ordered]}")
+    return ordered
+
+
 @contextmanager
-def _add_to_path(path: str | Path):
-    """Temporarily add a directory to sys.path."""
-    path = str(Path(path).resolve())
-    path_already_in_sys_path = path in sys.path
-    if not path_already_in_sys_path:
-        sys.path.insert(0, path)
+def _add_to_path(
+    paths: str | Path | List[str | Path],
+) -> Generator[None, None, None]:
+    """Temporarily add one or more directories to sys.path.
+
+    Accepts a single directory or a list of them. Directories end up in
+    ``sys.path`` in the order given, so the caller's ordering is the import
+    search order. Any directory already on ``sys.path`` is left alone and is
+    not removed afterwards. Whatever happens inside the block, ``sys.path``
+    is restored.
+
+    :param paths: A directory, or a list of directories in the order they
+        should be searched.
+    :type paths: str | Path | List[str | Path]
+    :yields: None. Used only to bracket the block where the paths are on
+        ``sys.path``.
+    :ytype: None
+    """
+    if isinstance(paths, (str, Path)):
+        paths = [paths]
+
+    added = []
+    # Reversed because each insert goes to the front, so the first directory
+    # given is inserted last and therefore ends up first in the search order.
+    for path in reversed(paths):
+        resolved = str(Path(path).resolve())
+        if resolved not in sys.path:
+            sys.path.insert(0, resolved)
+            added.append(resolved)
     try:
         yield
     finally:
-        if not path_already_in_sys_path and path in sys.path:
-            sys.path.remove(path)
+        for resolved in added:
+            if resolved in sys.path:
+                sys.path.remove(resolved)
 
 
 def _log_platform_info():

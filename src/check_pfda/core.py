@@ -16,6 +16,7 @@ from check_pfda.utils import (
     _recurse_to_repo_path,
     _set_up_test_file,
     check_for_updates,
+    find_student_code_dirs,
     get_current_assignment,
 )
 
@@ -74,7 +75,7 @@ def check_student_code(
         f"{current_assignment.name} at verbosity {verbosity}...",
         fg="green",
     )
-    with _add_to_path(repo_path / "src"):
+    with _add_to_path(find_student_code_dirs(repo_path)):
         _test_student_code(test_file_path, verbosity)
 
 

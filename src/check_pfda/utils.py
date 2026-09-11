@@ -127,6 +127,19 @@ class TestFileError(Exception):
     pass
 
 
+ORIGIN_DIR = "dir"        # --dir pointed at this folder
+ORIGIN_REPO = "repo"      # found in the repo's own tests/ folder
+ORIGIN_REMOTE = "remote"  # downloaded from the tests repo on GitHub
+
+
+class TestSource(NamedTuple):
+    """An assignment's test file, and where it came from."""
+
+    content: str
+    origin: str
+    path: Path | None
+
+
 def _find_local_test_file(
     root: Path, chapter: str, assignment: str
 ) -> Path | None:
@@ -185,59 +198,17 @@ def _read_local_test_file(test_path: Path, assignment: str) -> str:
     return content
 
 
-def get_tests(
-    chapter: str,
-    assignment: str,
-    local_tests_root: Path | None = None,
-    repo_path: Path | None = None,
-) -> str:
-    """Get tests for a given assignment.
-
-    Sources are tried in order: the directory given by ``--dir``, then the
-    repository's own ``tests`` directory, then the remote tests repository. An
-    explicit ``--dir`` beats auto-detection, and a missing file there is an
-    error rather than a fallback, since the flag states an intent. Whenever
-    tests come from somewhere other than the remote repository, the file being
-    used is announced.
+def _fetch_remote_tests(chapter: str, assignment: str) -> str:
+    """Download an assignment's test file from the remote tests repository.
 
     :param chapter: The chapter number, without its leading 'c'.
     :type chapter: str
     :param assignment: The assignment name.
     :type assignment: str
-    :param local_tests_root: Directory given by ``--dir``, if any.
-    :type local_tests_root: Path | None
-    :param repo_path: The assignment repository root, checked for a ``tests``
-        directory.
-    :type repo_path: Path | None
     :returns: The contents of the test file.
     :rtype: str
-    :raises TestFileError: If tests cannot be obtained from the chosen source.
+    :raises TestFileError: If the download fails or returns an empty file.
     """
-    if local_tests_root is not None:
-        test_path = _find_local_test_file(local_tests_root, chapter, assignment)
-        if test_path is None:
-            msg = (
-                f"Local test file not found under {local_tests_root}. "
-                f"Expected <dir>/c{chapter}/test_{assignment}.py "
-                f"or <dir>/test_{assignment}.py"
-            )
-            click.secho(msg, fg="red", bold=True)
-            logger.exception(msg)
-            raise TestFileError(msg)
-        click.secho(f"Using tests from --dir: {test_path}", fg="yellow")
-        return _read_local_test_file(test_path, assignment)
-
-    if repo_path is not None:
-        test_path = _find_local_test_file(repo_path / "tests", chapter, assignment)
-        if test_path is not None:
-            click.secho(
-                f"Using tests found in this repository: "
-                f"{test_path.relative_to(repo_path)} "
-                f"(not the official downloaded tests).",
-                fg="yellow",
-            )
-            return _read_local_test_file(test_path, assignment)
-
     tests_repo_url = _construct_test_url(chapter, assignment)
     try:
         r = requests.get(tests_repo_url, timeout=10)
@@ -259,7 +230,7 @@ def get_tests(
             fg="red",
             bold=True,
         )
-        logger.exception(
+        logger.error(
             f"Error: Received empty test file for assignment '{assignment}'."
         )
         raise TestFileError(
@@ -272,6 +243,99 @@ def get_tests(
             f"Warning: This may not be a valid test file for assignment '{assignment}'."
         )
     return r.text
+
+
+def resolve_tests(
+    chapter: str,
+    assignment: str,
+    local_tests_root: Path | None = None,
+    repo_path: Path | None = None,
+    force_remote: bool = False,
+) -> TestSource:
+    """Get tests for a given assignment, and report where they came from.
+
+    Sources are tried in order: the directory given by ``--dir``, then the
+    repository's own ``tests`` directory, then the remote tests repository. An
+    explicit ``--dir`` beats auto-detection, and a missing file there is an
+    error rather than a fallback, since the flag states an intent. Whenever
+    tests come from somewhere other than the remote repository, the file being
+    used is announced.
+
+    :param chapter: The chapter number, without its leading 'c'.
+    :type chapter: str
+    :param assignment: The assignment name.
+    :type assignment: str
+    :param local_tests_root: Directory given by ``--dir``, if any.
+    :type local_tests_root: Path | None
+    :param repo_path: The assignment repository root, checked for a ``tests``
+        directory.
+    :type repo_path: Path | None
+    :param force_remote: Skip both on-disk sources and download the tests.
+    :type force_remote: bool
+    :returns: The test file contents and the source they came from.
+    :rtype: TestSource
+    :raises TestFileError: If tests cannot be obtained from the chosen source.
+    """
+    if force_remote:
+        return TestSource(
+            _fetch_remote_tests(chapter, assignment), ORIGIN_REMOTE, None
+        )
+
+    if local_tests_root is not None:
+        test_path = _find_local_test_file(local_tests_root, chapter, assignment)
+        if test_path is None:
+            msg = (
+                f"Local test file not found under {local_tests_root}. "
+                f"Expected <dir>/c{chapter}/test_{assignment}.py "
+                f"or <dir>/test_{assignment}.py"
+            )
+            click.secho(msg, fg="red", bold=True)
+            logger.error(msg)
+            raise TestFileError(msg)
+        click.secho(f"Using tests from --dir: {test_path}", fg="yellow")
+        return TestSource(
+            _read_local_test_file(test_path, assignment), ORIGIN_DIR, test_path
+        )
+
+    if repo_path is not None:
+        test_path = _find_local_test_file(repo_path / "tests", chapter, assignment)
+        if test_path is not None:
+            click.secho(
+                f"Using the local tests in this repository: "
+                f"{test_path.relative_to(repo_path)} "
+                f"(not the remote tests).",
+                fg="yellow",
+            )
+            return TestSource(
+                _read_local_test_file(test_path, assignment), ORIGIN_REPO, test_path
+            )
+
+    return TestSource(_fetch_remote_tests(chapter, assignment), ORIGIN_REMOTE, None)
+
+
+def get_tests(
+    chapter: str,
+    assignment: str,
+    local_tests_root: Path | None = None,
+    repo_path: Path | None = None,
+) -> str:
+    """Get tests for a given assignment.
+
+    :param chapter: The chapter number, without its leading 'c'.
+    :type chapter: str
+    :param assignment: The assignment name.
+    :type assignment: str
+    :param local_tests_root: Directory given by ``--dir``, if any.
+    :type local_tests_root: Path | None
+    :param repo_path: The assignment repository root, checked for a ``tests``
+        directory.
+    :type repo_path: Path | None
+    :returns: The contents of the test file.
+    :rtype: str
+    """
+    return resolve_tests(
+        chapter, assignment, local_tests_root, repo_path
+    ).content
 
 
 def reload_module(module_name: str) -> None:
@@ -691,16 +755,34 @@ def _set_up_test_file(
     repo_tests_dir: Path,
     local_tests_root: Path | None = None,
     repo_path: Path | None = None,
-):
+    force_remote: bool = False,
+) -> tuple[Path, TestSource]:
+    """Fetch an assignment's tests and write them into the .tests directory.
+
+    :param assignment: The chapter and name of the assignment being checked.
+    :type assignment: AssignmentInfo
+    :param repo_tests_dir: The .tests directory to write into.
+    :type repo_tests_dir: Path
+    :param local_tests_root: Directory given by ``--dir``, if any.
+    :type local_tests_root: Path | None
+    :param repo_path: The assignment repository root.
+    :type repo_path: Path | None
+    :param force_remote: Skip both on-disk sources and download the tests.
+    :type force_remote: bool
+    :returns: The file the tests were written to, and where they came from.
+    :rtype: tuple[Path, TestSource]
+    """
     chapter = assignment.chapter
     assignment_name = assignment.name
     logger.debug(f"Chapter: {chapter}, Assignment: {assignment}")
-    tests = get_tests(chapter, assignment_name, local_tests_root, repo_path)
+    source = resolve_tests(
+        chapter, assignment_name, local_tests_root, repo_path, force_remote
+    )
     test_file_path = repo_tests_dir / f"test_{assignment_name}.py"
     with open(test_file_path, "w", encoding="utf-8") as f:
-        f.write(tests)
+        f.write(source.content)
     logger.debug(f"Wrote test file to: {test_file_path}")
-    return test_file_path
+    return test_file_path, source
 
 
 # Directory names that never hold student code. Dot-prefixed directories are

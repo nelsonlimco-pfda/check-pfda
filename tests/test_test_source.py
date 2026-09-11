@@ -89,7 +89,7 @@ class TestPrecedence:
         self, repo, tmp_path, no_network
     ):
         write_test_file(repo / "tests", body="def test_repo_copy(): pass\n")
-        explicit = tmp_path / "official"
+        explicit = tmp_path / "remote_checkout"
         write_test_file(explicit / "c00", body="def test_from_dir(): pass\n")
 
         content = get_tests("00", "hello_world", explicit, repo)
@@ -135,7 +135,7 @@ class TestAnnouncement:
         assert "this repository" in out.lower()
 
     def test_dir_flag_is_announced(self, repo, tmp_path, no_network, capsys):
-        explicit = tmp_path / "official"
+        explicit = tmp_path / "remote_checkout"
         write_test_file(explicit / "c00")
 
         get_tests("00", "hello_world", explicit, repo)

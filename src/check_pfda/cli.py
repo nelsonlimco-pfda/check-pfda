@@ -25,15 +25,28 @@ from .core import check_student_code
     ),
 )
 @click.option(
+    '--remote',
+    'force_remote',
+    is_flag=True,
+    default=False,
+    help=(
+        "Use the remote tests instead of the local tests in this repo's "
+        "tests/ folder."
+    ),
+)
+@click.option(
     '--debug',
     is_flag=True,
     default=False,
     help='Enable debug mode.',
 )
-def cli(verbosity, tests_dir, debug):
+def cli(verbosity, tests_dir, force_remote, debug):
     """Run student code checks."""
+    if tests_dir is not None and force_remote:
+        raise click.UsageError("--dir and --remote cannot be used together.")
     check_student_code(
         verbosity=verbosity,
         logger_level=logging.DEBUG if debug else logging.INFO,
         tests_dir=tests_dir,
+        force_remote=force_remote,
     )

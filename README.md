@@ -46,12 +46,16 @@ pfda
 
 - **Debug log**: `--debug` writes a `debug.log` file in the assignment repo’s root folder.
 - **Use local tests folder**: `--dir <path>` loads tests from your local folder instead of the remote tests repo. Expected layout: `<dir>/cXX/test_<assignment>.py` or `<dir>/test_<assignment>.py`.
+- **Use the remote tests**: `--remote` downloads the tests from the tests repo even if your assignment folder has its own `tests/` folder. Useful if the local tests look out of date.
+
+If your repo has a `tests/` folder, the tool uses those local tests. If they fail, it asks whether you want to try the remote tests as a trial run.
 
 Examples:
 
 ```bash
 pfda --debug
 pfda --dir /path/to/autograder-tests
+pfda --remote
 ```
 
 ---
@@ -80,7 +84,9 @@ When a user runs `python -m check_pfda` the tool does roughly this:
 - **Create a local `.tests/` folder**
   - this is a temporary workspace for the test file used in the run
 - **Load the test file**
-  - from `--dir` if provided, otherwise from a `tests/` folder in the repo if it has the matching test file, otherwise from the configured GitHub “raw” URL (see `config.yaml`). Whenever it isn’t the official remote copy, the tool says so.
+  - from `--dir` if provided, otherwise from a `tests/` folder in the repo if it has the matching test file, otherwise from the configured GitHub “raw” URL (see `config.yaml`). Whenever it isn’t the remote copy, the tool says so.
+- **Offer the remote tests if the local ones fail**
+  - if the tests came from the repo’s own `tests/` folder and they fail, the tool asks whether to try the remote tests as a trial. `--remote` skips the local tests from the start.
 - **Make sure Python can find the student code**
   - it looks through the repo for every folder holding Python files (skipping `.git`, virtual environments, and `tests`/`test`) and temporarily tells Python to look in all of them, so tests can `import shout` etc. regardless of which folder the code lives in
 - **Run `pytest` on that test file**
@@ -171,6 +177,7 @@ Running the tool in a student repo will create:
 
 - **`.tests/`**
   - a folder that stores the downloaded test file
+  - also holds `test_<assignment>_remote.py` after a remote trial run
   - safe to delete; it will be recreated next run
 - **`debug.log`** (only with `--debug`)
   - a log file with extra details to help diagnose problems
@@ -275,7 +282,7 @@ Edit `tests.tests_repo_url` in `src/check_pfda/config.yaml`.
 This is useful if you have:
 
 - a temporary test repo for development
-- a new location for the official tests
+- a new location for the remote tests
 
 ### The “test helpers” in `utils.py` (why they exist)
 
@@ -312,6 +319,10 @@ Maintenance tip: try to keep these helpers backward-compatible, because changing
     - the tests repo URL changed
     - the test file doesn’t exist at the expected path
   - Fix: check `tests_repo_url` and confirm the test file name/location.
+
+- **The local tests in `tests/` look out of date**
+  - The tool prefers a `tests/` folder in the assignment repo over the remote tests.
+  - Fix: run `pfda --remote` to skip it, or answer `y` when the tool offers a trial run after a failure.
 
 - **“Local test file not found … Expected layout: `<dir>/cXX/test_<assignment>.py`”**
   - You used `--dir`, but the chapter folder or filename doesn't match the current assignment.

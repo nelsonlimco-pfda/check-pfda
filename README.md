@@ -79,10 +79,8 @@ When a user runs `python -m check_pfda` the tool does roughly this:
 
 - **Find the assignment repo root**
   - starting from the current folder, it walks upward until it finds a folder containing a `.git` entry, or (as a fallback, for repos handed out without one) both a `README.md` and a `.gitignore`
-- **Figure out chapter + assignment**
-  - it compares the repo’s folder path to the list in `src/check_pfda/config.yaml`
-- **Create a local `.tests/` folder**
-  - this is a temporary workspace for the test file used in the run
+- **Figure out the assignment**
+  - it reads the repo's own `.check-pfda.yml` if present, or falls back to matching the repo's folder name against the list in `src/check_pfda/config.yaml` for older repos that predate that file
 - **Load the test file**
   - from `--dir` if provided, otherwise from a `tests/` folder in the repo if it has the matching test file, otherwise from the configured GitHub “raw” URL (see `config.yaml`). Whenever it isn’t the remote copy, the tool says so.
 - **Offer the remote tests if the local ones fail**
@@ -105,7 +103,7 @@ The important files are:
 - **`src/check_pfda/utils.py`**
   - helper functions used by the runner and (importantly) by the autograder tests
 - **`src/check_pfda/config.yaml`**
-  - the chapter/assignment list + the base URL for where tests are downloaded from
+  - the base URL for where tests are downloaded from, plus the chapter/assignment list used by the legacy folder-name fallback (see "How assignment detection works" below)
 - **`pyproject.toml`**
   - package name/version and the `pfda` command entry point
 
@@ -125,32 +123,35 @@ In both cases, everything funnels into:
 
 ### How assignment detection works
 
-The tool needs two pieces of information to download the right tests:
+The tool needs one piece of information to download the right tests: the **assignment name** (like `shout`). Chapter isn't needed at all — the remote tests repository is a single flat namespace (`test_shout.py`), not organized by chapter, so which chapter an assignment happens to belong to is irrelevant to fetching its tests.
 
-- the **chapter** (like `c01`)
-- the **assignment name** (like `shout`)
+**Primary mechanism: `.check-pfda.yml`.** Every assignment repo is expected to contain a small file at its root declaring its own identity:
 
-Because student repo names include both of those (plus a username), we detect them from the folder name.
+```yaml
+assignment: favorite_artist
+```
 
-Example student repo folder names:
+This file is meant to be part of the assignment template itself (stamped in by whatever creates the student's repo), not something a student or instructor edits by hand. When it's present, it's trusted completely — the repo's folder name, and what the student may have renamed it to, play no part whatsoever. This is what makes assignment detection immune to student usernames (or anything else about the folder name) coincidentally looking like an assignment name.
+
+If `.check-pfda.yml` exists but is broken (invalid YAML, or missing the `assignment` key), the tool fails loudly with a red error rather than silently falling back to guessing — a broken file is an authoring mistake that should be caught immediately, not masked.
+
+**Fallback: folder-name detection.** Repos that predate `.check-pfda.yml` don't have it, so the tool falls back to inferring chapter and assignment from the repo's own folder name (not the rest of the path), e.g.:
 
 - `pfda-c01-lab-shout-someusername`
 - `pfda-c01-lab-favorite-artist-someusername`
 
-What the code does:
+It loads `src/check_pfda/config.yaml` and checks the folder name against it:
+- does the folder name contain a `c01`, `c02`, etc. component?
+- does it contain, as a whole word, one of the assignment names listed for that chapter?
+- if a username happens to also spell out another valid assignment name (e.g. a student named `shout-master` doing the `favorite-artist` assignment), the assignment name that appears closer to the chapter marker wins, since the username is always the trailing part of the folder name.
 
-- First, it finds the repo root (see "Find the assignment repo root" above). The repo's folder name plays no part in this — only the path as a whole is checked against the chapter/assignment list below.
-- Then it loads `src/check_pfda/config.yaml` and checks:
-  - does the path contain `c01`, `c02`, etc?
-  - does the path contain one of the assignment names listed for that chapter?
-
-Small detail (important in practice): folder names often use hyphens (`favorite-artist`) but Python files/tests use underscores (`favorite_artist`), so the matcher treats `-` and `_` as “basically the same”.
+Small detail (important in practice): folder names often use hyphens (`favorite-artist`) but Python files/tests use underscores (`favorite_artist`), so the matcher treats `-` and `_` as “basically the same”, and compares whole hyphen/underscore-delimited words rather than raw characters — so a username like `leshoutier` is never mistaken for the assignment `shout`. This fallback only ever produces a chapter value for display purposes and for locating chaptered local `--dir` mirrors — it's never part of the download URL.
 
 ### What the tool expects from an assignment repo
 
-For the checker to work, the assignment repo usually needs:
+For the checker to work, the assignment repo needs:
 
-- a folder name that contains a chapter like `c01` and an assignment name like `shout`
+- a `.check-pfda.yml` file declaring its assignment name (or, for older repos, a folder name that contains a chapter like `c01` and an assignment name like `shout`, for the fallback above)
 - the assignment’s Python file(s) somewhere in the repo — `src/`, the repo root, or any other folder all work, since the tool looks for wherever the code actually is rather than requiring a `src/` folder specifically. Where the code *should* live for a given assignment is up to that assignment’s own tests, not this tool.
 
 ### Configuration: `config.yaml`
@@ -159,25 +160,22 @@ For the checker to work, the assignment repo usually needs:
 
 - **Where tests are downloaded from**
   - `tests.tests_repo_url`
-- **Which assignments exist**
-  - `tests.c00`, `tests.c01`, … lists of assignment “slugs”
+- **Which assignments exist, for the legacy folder-name fallback only**
+  - `tests.c00`, `tests.c01`, … lists of assignment “slugs”. A repo with a `.check-pfda.yml` never consults this — it's only used to match old repos by folder name.
 
-The download URL is built like this:
+The download URL is always flat, regardless of how the assignment was resolved:
 
 - base URL from `tests_repo_url`
-- plus `/c{chapter}/test_{assignment}.py`
+- plus `/test_{assignment}.py`
 
-So if the chapter is `01` and the assignment is `shout`, the tool downloads:
-
-- `c01/test_shout.py`
+So if the assignment is `shout`, the tool downloads `test_shout.py`.
 
 ### What gets created in a student repo
 
 Running the tool in a student repo will create:
 
 - **`.tests/`**
-  - a folder that stores the downloaded test file
-  - also holds `test_<assignment>_remote.py` after a remote trial run
+  - only created when tests are downloaded from the remote tests repo (i.e. no `--dir` and no matching file in the repo's own `tests/` folder, or `--remote` was passed), or after a remote trial run; stores that downloaded test file (and `test_<assignment>_remote.py` after a trial run)
   - safe to delete; it will be recreated next run
 - **`debug.log`** (only with `--debug`)
   - a log file with extra details to help diagnose problems
@@ -246,15 +244,14 @@ Most maintenance work is one of these:
 
 #### Add a new assignment (so it can be detected)
 
-1. Add the assignment slug to `src/check_pfda/config.yaml` under the right chapter.
-2. Make sure the tests repo contains a file with the matching name:
-   - folder: `cXX/`
-   - file: `test_<assignment>.py`
+1. Give the assignment's template repo a `.check-pfda.yml` declaring its assignment name (see "How assignment detection works"). This is the only step needed for the assignment to be detected correctly, regardless of what students name their fork or their GitHub username.
+2. Make sure the tests repo contains a file with the matching name at its root: `test_<assignment>.py` (no chapter folder -- the remote tests repo is a flat namespace).
+3. Optional, only for the legacy folder-name fallback to keep working for repos without a `.check-pfda.yml`: add the assignment slug to `src/check_pfda/config.yaml` under the right chapter.
 
 Keep names simple:
 
-- Prefer **underscores** in `config.yaml` (example: `favorite_artist`)
-- The code will still match student repo folders that use hyphens (example: `favorite-artist`)
+- Prefer **underscores** (example: `favorite_artist`)
+- The fallback matcher will still match student repo folders that use hyphens (example: `favorite-artist`)
 
 #### Use a local tests folder instead of the remote repo
 
@@ -264,14 +261,7 @@ If you have a local checkout of the tests repo, run with `--dir`:
 pfda --dir /path/to/autograder-tests
 ```
 
-Expected structure inside that folder:
-
-- `cXX/`
-- `test_<assignment>.py`
-
-For example:
-
-- `c01/test_shout.py`
+Expected structure inside that folder: `test_<assignment>.py` at the root (e.g. `test_shout.py`) -- matching the remote tests repo's flat layout. A legacy chaptered layout (`cXX/test_<assignment>.py`) is also still checked, for backward compatibility with older local mirrors.
 
 When `--dir` is provided, check-pfda reads tests from disk and does not fetch from `tests.tests_repo_url`.
 
@@ -301,11 +291,13 @@ Maintenance tip: try to keep these helpers backward-compatible, because changing
 
 ### Troubleshooting (common issues)
 
-- **“Unable to match chapter and assignment against cwd.”**
-  - You’re probably not inside a repo whose folder name includes both:
-    - a chapter like `c01`
-    - an assignment name listed in `config.yaml`
-  - Fix: rename the folder to match, or update `config.yaml` if it’s a new assignment.
+- **“Unable to determine your assignment.”**
+  - The repo has no `.check-pfda.yml`, and its folder name (the fallback) doesn't include both a chapter like `c01` and an assignment name listed in `config.yaml`.
+  - Fix: add a `.check-pfda.yml` declaring the assignment (preferred), or rename the folder to match, or update `config.yaml` if it’s a new assignment.
+
+- **“Error in .check-pfda.yml: …”**
+  - The repo has a `.check-pfda.yml`, but it's missing an `assignment` value or isn't valid YAML. This fails loudly rather than falling back to folder-name guessing, since it's an authoring mistake in the template repo, not something a student can fix by renaming their folder.
+  - Fix: correct the assignment's template repo's `.check-pfda.yml`.
 
 - **“C07 and C08 do not have any automated tests…”**
   - This is expected behavior: the tool intentionally stops for those chapters.
@@ -324,8 +316,8 @@ Maintenance tip: try to keep these helpers backward-compatible, because changing
   - The tool prefers a `tests/` folder in the assignment repo over the remote tests.
   - Fix: run `pfda --remote` to skip it, or answer `y` when the tool offers a trial run after a failure.
 
-- **“Local test file not found … Expected layout: `<dir>/cXX/test_<assignment>.py`”**
-  - You used `--dir`, but the chapter folder or filename doesn't match the current assignment.
+- **“Local test file not found … Expected `<dir>/test_<assignment>.py`”**
+  - You used `--dir`, but the filename (or chaptered subfolder, for older local mirrors) doesn't match the current assignment.
   - Fix: verify the local folder structure and file names.
 
 - **`.tests/` permission errors**

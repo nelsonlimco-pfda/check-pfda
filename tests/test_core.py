@@ -54,6 +54,16 @@ class TestLazyLookup:
         importlib.reload(core)  # must not raise
 
 
+class TestRemoteAndDirAreMutuallyExclusive:
+    """cli.py rejects --remote combined with --dir, but that only protects
+    the CLI entry point -- check_student_code() must reject it too for any
+    other caller, rather than silently ignoring tests_dir."""
+
+    def test_raises_when_both_are_set(self, tmp_path):
+        with pytest.raises(ValueError):
+            core.check_student_code(force_remote=True, tests_dir=tmp_path)
+
+
 class TestMissingRepository:
     def test_reports_a_message_instead_of_raising(
         self, tmp_path, monkeypatch, capsys

@@ -6,12 +6,15 @@ directory, then the remote tests repository.
 
 # TestFileError is reached through the module rather than imported by name,
 # so pytest does not try to collect it as a test class.
+import re
+
 from check_pfda import utils
 from check_pfda.utils import (
     ORIGIN_DIR,
     ORIGIN_REMOTE,
     ORIGIN_REPO,
     AssignmentInfo,
+    _fetch_remote_tests,
     _find_local_test_file,
     _set_up_test_file,
     get_tests,
@@ -80,6 +83,19 @@ class TestFindLocalTestFile:
     def test_wrong_assignment_name_returns_none(self, tmp_path):
         write_test_file(tmp_path, assignment="shout")
         assert _find_local_test_file(tmp_path, "00", "hello_world") is None
+
+    def test_unknown_chapter_still_finds_a_chaptered_mirror(self, tmp_path):
+        """An assignment resolved via .check-pfda.yml has chapter=None, but
+        an existing --dir mirror organized by chapter must still be found."""
+        write_test_file(tmp_path / "c00")
+        found = _find_local_test_file(tmp_path, None, "hello_world")
+        assert found == tmp_path / "c00" / "test_hello_world.py"
+
+    def test_unknown_chapter_prefers_flat_over_chaptered(self, tmp_path):
+        write_test_file(tmp_path)
+        write_test_file(tmp_path / "c00")
+        found = _find_local_test_file(tmp_path, None, "hello_world")
+        assert found == tmp_path / "test_hello_world.py"
 
 
 class TestPrecedence:
@@ -252,3 +268,33 @@ class TestSetUpTestFile:
         assert result == repo / ".tests" / "test_hello_world.py"
         assert result.read_text() == REMOTE_BODY
         assert len(no_network) == 1
+
+    def test_works_without_a_chapter(self, repo, no_network):
+        """Assignments resolved via .check-pfda.yml have no chapter at all."""
+        assignment = AssignmentInfo(name="hello_world")
+        test_path = write_test_file(repo / "tests")
+
+        result, source = _set_up_test_file(assignment, repo / ".tests", None, repo)
+
+        assert result == test_path
+
+    def test_remote_fallback_works_without_a_chapter(self, repo, no_network):
+        assignment = AssignmentInfo(name="hello_world")
+
+        result, source = _set_up_test_file(assignment, repo / ".tests", None, repo)
+
+        assert result == repo / ".tests" / "test_hello_world.py"
+        assert result.read_text() == REMOTE_BODY
+
+
+class TestFlatRemoteUrl:
+    """The remote tests repository is a single flat namespace -- chapter
+    plays no part in the download URL, regardless of how the assignment was
+    resolved."""
+
+    def test_fetch_remote_tests_builds_a_flat_url(self, no_network):
+        _fetch_remote_tests("hello_world")
+
+        assert len(no_network) == 1
+        assert re.search(r"/c\d+/", no_network[0]) is None
+        assert "test_hello_world.py" in no_network[0]

@@ -757,11 +757,18 @@ def _set_up_test_file(
     repo_path: Path | None = None,
     force_remote: bool = False,
 ) -> tuple[Path, TestSource]:
-    """Fetch an assignment's tests and write them into the .tests directory.
+    """Return the test file to run pytest against, fetching it if needed.
+
+    A local source (found via ``--dir`` or the repository's own ``tests``
+    directory) is run in place, from wherever it already lives on disk.
+    Only the remote fallback needs an isolated copy -- there's no other file
+    on disk to point pytest at -- which is what ``repo_tests_dir`` (the
+    ``.tests`` directory) is for. It's created lazily, only when that copy is
+    actually written.
 
     :param assignment: The chapter and name of the assignment being checked.
     :type assignment: AssignmentInfo
-    :param repo_tests_dir: The .tests directory to write into.
+    :param repo_tests_dir: Where to cache a downloaded test file, if needed.
     :type repo_tests_dir: Path
     :param local_tests_root: Directory given by ``--dir``, if any.
     :type local_tests_root: Path | None
@@ -769,7 +776,7 @@ def _set_up_test_file(
     :type repo_path: Path | None
     :param force_remote: Skip both on-disk sources and download the tests.
     :type force_remote: bool
-    :returns: The file the tests were written to, and where they came from.
+    :returns: The test file to run, and where it came from.
     :rtype: tuple[Path, TestSource]
     """
     chapter = assignment.chapter
@@ -778,6 +785,11 @@ def _set_up_test_file(
     source = resolve_tests(
         chapter, assignment_name, local_tests_root, repo_path, force_remote
     )
+    if source.path is not None:
+        return source.path, source
+
+    repo_tests_dir.mkdir(exist_ok=True)
+    logger.debug(f"Created/verified .tests directory: {repo_tests_dir}")
     test_file_path = repo_tests_dir / f"test_{assignment_name}.py"
     with open(test_file_path, "w", encoding="utf-8") as f:
         f.write(source.content)
@@ -787,9 +799,9 @@ def _set_up_test_file(
 
 # Directory names that never hold student code. Dot-prefixed directories are
 # skipped separately, which covers .git, .tests and .venv. 'tests' and 'test'
-# are excluded so a repository's own test file cannot shadow the copy being
-# run out of .tests/. That directory is still used as a source of tests --
-# see _find_local_test_file.
+# are excluded so a repository's own test file -- which _set_up_test_file()
+# may run directly out of that directory, see _find_local_test_file -- isn't
+# mistaken for importable student code.
 _SKIPPED_DIR_NAMES = frozenset(
     {"tests", "test", "__pycache__", "node_modules", "site-packages"}
 )

@@ -71,10 +71,6 @@ def check_student_code(
         echo("Unable to match chapter and assignment against cwd. Contact your TA.")
         return
 
-    repo_tests_dir.mkdir(exist_ok=True)
-
-    LOGGER.debug(f"Created/verified .tests directory: {repo_tests_dir}")
-
     test_file_path, source = _set_up_test_file(
         current_assignment, repo_tests_dir, tests_dir, repo_path, force_remote
     )
@@ -146,6 +142,7 @@ def _offer_remote_trial(
     # Deliberately not the filename the first run used. Pytest reuses a module
     # it has already imported, so writing over that file would silently run
     # the local tests again.
+    repo_tests_dir.mkdir(exist_ok=True)
     trial_path = repo_tests_dir / f"test_{assignment.name}_remote.py"
     trial_path.write_text(remote.content, encoding="utf-8")
 

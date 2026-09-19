@@ -7,7 +7,15 @@ directory, then the remote tests repository.
 # TestFileError is reached through the module rather than imported by name,
 # so pytest does not try to collect it as a test class.
 from check_pfda import utils
-from check_pfda.utils import _find_local_test_file, get_tests
+from check_pfda.utils import (
+    ORIGIN_DIR,
+    ORIGIN_REMOTE,
+    ORIGIN_REPO,
+    AssignmentInfo,
+    _find_local_test_file,
+    _set_up_test_file,
+    get_tests,
+)
 
 import pytest
 
@@ -179,3 +187,68 @@ class TestErrors:
 
         assert content == "x = 1\n"
         assert "may not be a valid test file" in capsys.readouterr().out
+
+
+class TestSetUpTestFile:
+    """_set_up_test_file() decides what pytest actually runs against.
+
+    A local source (--dir or the repo's own tests/) must be run in place --
+    not copied into .tests/ first, which was a real bug -- while the remote
+    fallback still needs to write and run an isolated copy there, since a
+    download has no backing file of its own.
+    """
+
+    assignment = AssignmentInfo(chapter="00", name="hello_world")
+
+    def test_repo_tests_file_is_run_in_place(self, repo, no_network):
+        test_path = write_test_file(repo / "tests")
+
+        result, source = _set_up_test_file(
+            self.assignment, repo / ".tests", None, repo
+        )
+
+        assert result == test_path
+        assert source.origin == ORIGIN_REPO
+        assert not (repo / ".tests").exists()
+
+    def test_dir_flag_file_is_run_in_place(self, repo, tmp_path, no_network):
+        explicit = tmp_path / "remote_checkout"
+        test_path = write_test_file(explicit / "c00")
+
+        result, source = _set_up_test_file(
+            self.assignment, repo / ".tests", explicit, repo
+        )
+
+        assert result == test_path
+        assert source.origin == ORIGIN_DIR
+        assert not (repo / ".tests").exists()
+
+    def test_remote_fallback_is_cached_under_dot_tests(self, repo, no_network):
+        result, source = _set_up_test_file(self.assignment, repo / ".tests", None, repo)
+
+        assert result == repo / ".tests" / "test_hello_world.py"
+        assert result.read_text() == REMOTE_BODY
+        assert source.origin == ORIGIN_REMOTE
+
+    def test_force_remote_skips_a_local_repo_tests_file(self, repo, no_network):
+        write_test_file(repo / "tests", body="def test_local(): pass\n")
+
+        result, source = _set_up_test_file(
+            self.assignment, repo / ".tests", None, repo, force_remote=True
+        )
+
+        assert result == repo / ".tests" / "test_hello_world.py"
+        assert result.read_text() == REMOTE_BODY
+        assert len(no_network) == 1
+
+    def test_force_remote_skips_a_dir_flag_file(self, repo, tmp_path, no_network):
+        explicit = tmp_path / "remote_checkout"
+        write_test_file(explicit / "c00", body="def test_from_dir(): pass\n")
+
+        result, source = _set_up_test_file(
+            self.assignment, repo / ".tests", explicit, repo, force_remote=True
+        )
+
+        assert result == repo / ".tests" / "test_hello_world.py"
+        assert result.read_text() == REMOTE_BODY
+        assert len(no_network) == 1

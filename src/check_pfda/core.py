@@ -43,6 +43,14 @@ def check_student_code(
     force_remote: bool = False,
 ) -> None:
     """Run the checker: outputs results of the assignment's tests to stdout."""
+    # cli.py also rejects this combination (as a click.UsageError) before
+    # ever calling in here, but that only protects the CLI entry point --
+    # this guards any other caller (tests, a future front-end) that invokes
+    # check_student_code() directly with both set, so tests_dir is never
+    # silently ignored in favor of the remote tests.
+    if force_remote and tests_dir is not None:
+        raise ValueError("force_remote and tests_dir cannot both be set.")
+
     check_for_updates()
 
     # Looked up here rather than at import time, so a missing repository is
@@ -68,17 +76,24 @@ def check_student_code(
 
     current_assignment = get_current_assignment(repo_path)
     if not current_assignment:
-        echo("Unable to match chapter and assignment against cwd. Contact your TA.")
+        echo("Unable to determine your assignment. Contact your TA.")
         return
 
     test_file_path, source = _set_up_test_file(
         current_assignment, repo_tests_dir, tests_dir, repo_path, force_remote
     )
-    secho(
-        f"Checking chapter {current_assignment.chapter} assignment "
-        f"{current_assignment.name} at verbosity {verbosity}...",
-        fg="green",
-    )
+    if current_assignment.chapter is not None:
+        secho(
+            f"Checking chapter {current_assignment.chapter} assignment "
+            f"{current_assignment.name} at verbosity {verbosity}...",
+            fg="green",
+        )
+    else:
+        secho(
+            f"Checking assignment {current_assignment.name} at verbosity "
+            f"{verbosity}...",
+            fg="green",
+        )
     with _add_to_path(find_student_code_dirs(repo_path)):
         exit_code = _test_student_code(test_file_path, verbosity)
         if exit_code:

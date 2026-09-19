@@ -24,10 +24,16 @@ STRING_LEN_LIMIT = 1000
 
 
 class AssignmentInfo(NamedTuple):
-    """Information about the current assignment."""
+    """Information about the current assignment.
 
-    chapter: str
+    ``chapter`` is optional and only ever set by the legacy folder-name
+    fallback matcher (see ``_match_assignment_from_config``); it's ``None``
+    when the assignment came from an explicit ``.check-pfda.yml`` file,
+    since chapter plays no part in that resolution.
+    """
+
     name: str
+    chapter: str | None = None
 
 
 def check_for_updates() -> None:
@@ -142,27 +148,40 @@ class TestSource(NamedTuple):
 
 
 def _find_local_test_file(
-    root: Path, chapter: str, assignment: str
+    root: Path, chapter: str | None, assignment: str
 ) -> Path | None:
     """Look for an assignment's test file inside a local directory.
 
-    Two layouts are accepted: the chaptered one used by ``--dir``
-    (``<root>/c01/test_shout.py``) and a flat one (``<root>/test_shout.py``),
-    which is how a repository's own ``tests`` directory is usually arranged.
+    When a chapter is known, the chaptered layout used historically by
+    ``--dir`` (``<root>/c01/test_shout.py``) is checked first, then the flat
+    layout (``<root>/test_shout.py``) -- matching the existing precedence
+    when both exist. When the chapter is unknown (the assignment was
+    resolved via ``.check-pfda.yml``, which carries no chapter), the flat
+    layout is checked first, then any ``<root>/cXX/test_shout.py``, so an
+    existing chaptered ``--dir`` mirror still works for assignments using the
+    new resolution mechanism -- their repo simply doesn't happen to know
+    which chapter that mirror filed the test under.
 
     :param root: The directory to look in.
     :type root: Path
-    :param chapter: The chapter number, without its leading 'c'.
-    :type chapter: str
+    :param chapter: The chapter number, without its leading 'c', or None.
+    :type chapter: str | None
     :param assignment: The assignment name.
     :type assignment: str
-    :returns: The path to the test file, or None if neither layout matched.
+    :returns: The path to the test file, or None if no layout matched.
     :rtype: Path | None
     """
     filename = f"test_{assignment}.py"
-    for candidate in (root / f"c{chapter}" / filename, root / filename):
+    candidates = [root / filename]
+    if chapter is not None:
+        candidates.insert(0, root / f"c{chapter}" / filename)
+    for candidate in candidates:
         if candidate.is_file():
             return candidate
+    if chapter is None:
+        for chaptered in sorted(root.glob(f"c*/{filename}")):
+            if chaptered.is_file():
+                return chaptered
     return None
 
 
@@ -199,18 +218,20 @@ def _read_local_test_file(test_path: Path, assignment: str) -> str:
     return content
 
 
-def _fetch_remote_tests(chapter: str, assignment: str) -> str:
+def _fetch_remote_tests(assignment: str) -> str:
     """Download an assignment's test file from the remote tests repository.
 
-    :param chapter: The chapter number, without its leading 'c'.
-    :type chapter: str
+    The remote tests repository is a single flat namespace
+    (``test_<assignment>.py``), not chaptered -- chapter plays no part in
+    finding a test remotely.
+
     :param assignment: The assignment name.
     :type assignment: str
     :returns: The contents of the test file.
     :rtype: str
     :raises TestFileError: If the download fails or returns an empty file.
     """
-    tests_repo_url = _construct_test_url(chapter, assignment)
+    tests_repo_url = _construct_test_url(assignment)
     try:
         r = requests.get(tests_repo_url, timeout=10)
         r.raise_for_status()
@@ -247,7 +268,7 @@ def _fetch_remote_tests(chapter: str, assignment: str) -> str:
 
 
 def resolve_tests(
-    chapter: str,
+    chapter: str | None,
     assignment: str,
     local_tests_root: Path | None = None,
     repo_path: Path | None = None,
@@ -262,8 +283,16 @@ def resolve_tests(
     tests come from somewhere other than the remote repository, the file being
     used is announced.
 
-    :param chapter: The chapter number, without its leading 'c'.
-    :type chapter: str
+    ``chapter`` only affects the local sources -- it lets ``--dir``/the
+    repo's own ``tests`` directory be organized into chaptered subfolders,
+    for backward compatibility with existing local mirrors. It's ``None``
+    when the assignment was resolved via ``.check-pfda.yml``, in which case
+    the flat local layout is checked first, falling back to any chaptered
+    subfolder found on disk. The remote tests repository is a single flat
+    namespace regardless, so ``chapter`` plays no part there.
+
+    :param chapter: The chapter number, without its leading 'c', or None.
+    :type chapter: str | None
     :param assignment: The assignment name.
     :type assignment: str
     :param local_tests_root: Directory given by ``--dir``, if any.
@@ -278,18 +307,15 @@ def resolve_tests(
     :raises TestFileError: If tests cannot be obtained from the chosen source.
     """
     if force_remote:
-        return TestSource(
-            _fetch_remote_tests(chapter, assignment), ORIGIN_REMOTE, None
-        )
+        return TestSource(_fetch_remote_tests(assignment), ORIGIN_REMOTE, None)
 
     if local_tests_root is not None:
         test_path = _find_local_test_file(local_tests_root, chapter, assignment)
         if test_path is None:
-            msg = (
-                f"Local test file not found under {local_tests_root}. "
-                f"Expected <dir>/c{chapter}/test_{assignment}.py "
-                f"or <dir>/test_{assignment}.py"
-            )
+            expected = f"<dir>/test_{assignment}.py"
+            if chapter is not None:
+                expected = f"<dir>/c{chapter}/test_{assignment}.py or {expected}"
+            msg = f"Local test file not found under {local_tests_root}. Expected {expected}"
             click.secho(msg, fg="red", bold=True)
             logger.error(msg)
             raise TestFileError(msg)
@@ -311,19 +337,21 @@ def resolve_tests(
                 _read_local_test_file(test_path, assignment), ORIGIN_REPO, test_path
             )
 
-    return TestSource(_fetch_remote_tests(chapter, assignment), ORIGIN_REMOTE, None)
+    return TestSource(_fetch_remote_tests(assignment), ORIGIN_REMOTE, None)
 
 
 def get_tests(
-    chapter: str,
+    chapter: str | None,
     assignment: str,
     local_tests_root: Path | None = None,
     repo_path: Path | None = None,
 ) -> str:
     """Get tests for a given assignment.
 
-    :param chapter: The chapter number, without its leading 'c'.
-    :type chapter: str
+    :param chapter: The chapter number, without its leading 'c', or None if
+        unknown -- only affects chaptered local ``--dir`` layouts; the
+        remote tests repository is a flat namespace.
+    :type chapter: str | None
     :param assignment: The assignment name.
     :type assignment: str
     :param local_tests_root: Directory given by ``--dir``, if any.
@@ -522,8 +550,13 @@ def _check_length_limit(actual: str, limit: int) -> str | None:
         )
 
 
-def _construct_test_url(chapter, assignment: str) -> str:
-    """Construct the URL at which the test lives."""
+def _construct_test_url(assignment: str) -> str:
+    """Construct the URL at which the test lives.
+
+    The remote tests repository is a single flat namespace
+    (``test_<assignment>.py``), not chaptered -- chapter plays no part in
+    finding a test remotely.
+    """
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     config_path = os.path.join(base_dir, "check_pfda", "config.yaml")
 
@@ -533,7 +566,7 @@ def _construct_test_url(chapter, assignment: str) -> str:
     base_url = config["tests"]["tests_repo_url"]
 
     # query at the end forces CDN to flush cache
-    return f"{base_url}/c{chapter}/test_{assignment}.py?now={int(time.time())}"
+    return f"{base_url}/test_{assignment}.py?now={int(time.time())}"
 
 
 def _load_config_yaml() -> dict | None:
@@ -585,27 +618,94 @@ def _find_subsequence_starts(tokens: List[str], sub: List[str]) -> List[int]:
     return [i for i in range(len(tokens) - n + 1) if tokens[i:i + n] == sub]
 
 
+class CheckFileError(Exception):
+    """Raised when a repo's ``.check-pfda.yml`` exists but is invalid."""
+
+    pass
+
+
+_CHECK_FILE_NAME = ".check-pfda.yml"
+
+
+def _read_check_file(repo_path: Path) -> str | None:
+    """Read the assignment name declared by a repo's ``.check-pfda.yml``, if any.
+
+    This is the authoritative source of assignment identity: a repo that has
+    this file is trusted completely, with no folder-name parsing involved at
+    all. Absence is a normal, expected case (older repos predate this file)
+    and simply means the caller should fall back to folder-name detection --
+    but a file that *exists* and is broken is an authoring mistake that
+    should be surfaced immediately rather than silently masked by a fallback
+    match.
+
+    :param repo_path: The path to the repository root.
+    :type repo_path: Path
+    :returns: The declared assignment name, or None if no ``.check-pfda.yml`` exists.
+    :rtype: str | None
+    :raises CheckFileError: If the file exists but can't be parsed, or has no
+        ``assignment`` value.
+    """
+    check_path = repo_path / _CHECK_FILE_NAME
+    if not check_path.is_file():
+        return None
+
+    try:
+        data = yaml.safe_load(check_path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as e:
+        raise CheckFileError(f"Couldn't parse {_CHECK_FILE_NAME}: {e}") from e
+
+    if not isinstance(data, dict):
+        raise CheckFileError(
+            f"{_CHECK_FILE_NAME} must be a YAML mapping with an 'assignment' key."
+        )
+
+    assignment = str(data.get("assignment") or "").strip()
+    if not assignment:
+        raise CheckFileError(
+            f"{_CHECK_FILE_NAME} is missing an 'assignment' value."
+        )
+    return assignment
+
+
 def get_current_assignment(repo_path: Path) -> AssignmentInfo | None:
     """
-    Matches the repository's own folder name against a YAML configuration
-    file to find the corresponding chapter and assignment.
+    Determines the current assignment, preferring an explicit
+    ``.check-pfda.yml`` declaration and falling back to matching the
+    repository's own folder name against a YAML configuration file.
 
-    Only the folder name itself is checked (not the rest of the path), since
-    that's the only part of the path the assignment-detection convention
-    makes any promise about -- an ancestor directory (e.g. a parent folder
-    that happens to be named after a chapter or assignment) plays no part.
+    Only the folder name itself is checked in the fallback (not the rest of
+    the path), since that's the only part of the path the assignment-
+    detection convention makes any promise about -- an ancestor directory
+    (e.g. a parent folder that happens to be named after a chapter or
+    assignment) plays no part.
 
     :param repo_path: The path to the repository root.
     :type repo_path: Path
 
-    :return: An AssignmentInfo named tuple with 'chapter' and 'assignment' fields if found, None on error
+    :return: An AssignmentInfo named tuple if found, None on error
     :rtype: AssignmentInfo | None
     """
+    # Note that we use click.secho, not classic print, to show terminal output.
+    try:
+        declared_assignment = _read_check_file(repo_path)
+    except CheckFileError as e:
+        click.secho(
+            f"Error in {_CHECK_FILE_NAME}: {e} Contact your TA.",
+            fg="red",
+            bold=True,
+        )
+        logger.error(f"Invalid {_CHECK_FILE_NAME} in {repo_path}: {e}")
+        return None
+
+    if declared_assignment is not None:
+        result = AssignmentInfo(name=declared_assignment)
+        logger.debug(f"Current assignment info (from {_CHECK_FILE_NAME}): {result}")
+        return result
+
     # TODO: this shouldn't be in business logic--this should be refactored such that
     # if an assignment is not found, it returns None and the caller can handle it accordingly.
     # Likely that means printing a message that says "This assignment doesn't have any tests! Check the README
     # for more information."
-    # Note that we use click.secho, not classic print, to show terminal output.
     repo_name = repo_path.name
     tokens = _tokenize(repo_name)
     if "c07" in tokens or "c08" in tokens:
@@ -619,6 +719,9 @@ def get_current_assignment(repo_path: Path) -> AssignmentInfo | None:
     if config is None:
         return None
 
+    logger.debug(
+        f"No {_CHECK_FILE_NAME} found in {repo_path}; falling back to folder-name detection."
+    )
     return _match_assignment_from_config(config, repo_name)
 
 

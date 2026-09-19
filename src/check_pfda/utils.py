@@ -3,6 +3,7 @@
 import logging
 import os
 import platform
+import re
 import sys
 import time
 from contextlib import contextmanager
@@ -555,10 +556,44 @@ def _load_config_yaml() -> dict | None:
         return None
 
 
+def _tokenize(text: str) -> List[str]:
+    """Split text into lowercase tokens on ``-``/``_`` boundaries.
+
+    Used to compare folder-name components as whole words rather than raw
+    substrings, so e.g. a username like ``leshoutier`` doesn't accidentally
+    contain the assignment name ``shout``.
+
+    :param text: The text to tokenize.
+    :type text: str
+    :returns: The non-empty tokens, lowercased.
+    :rtype: List[str]
+    """
+    return [t for t in re.split(r"[-_]", text.lower()) if t]
+
+
+def _find_subsequence_starts(tokens: List[str], sub: List[str]) -> List[int]:
+    """Find every index where ``sub`` occurs as a contiguous run within ``tokens``.
+
+    :param tokens: The tokens to search.
+    :type tokens: List[str]
+    :param sub: The token sequence to look for.
+    :type sub: List[str]
+    :returns: Every starting index of a match, in ascending order.
+    :rtype: List[int]
+    """
+    n = len(sub)
+    return [i for i in range(len(tokens) - n + 1) if tokens[i:i + n] == sub]
+
+
 def get_current_assignment(repo_path: Path) -> AssignmentInfo | None:
     """
-    Matches the current working directory against a YAML configuration file
-    to find the corresponding chapter and assignment.
+    Matches the repository's own folder name against a YAML configuration
+    file to find the corresponding chapter and assignment.
+
+    Only the folder name itself is checked (not the rest of the path), since
+    that's the only part of the path the assignment-detection convention
+    makes any promise about -- an ancestor directory (e.g. a parent folder
+    that happens to be named after a chapter or assignment) plays no part.
 
     :param repo_path: The path to the repository root.
     :type repo_path: Path
@@ -571,8 +606,9 @@ def get_current_assignment(repo_path: Path) -> AssignmentInfo | None:
     # Likely that means printing a message that says "This assignment doesn't have any tests! Check the README
     # for more information."
     # Note that we use click.secho, not classic print, to show terminal output.
-    repo_path_str = str(repo_path)
-    if "c07" in repo_path_str or "c08" in repo_path_str:
+    repo_name = repo_path.name
+    tokens = _tokenize(repo_name)
+    if "c07" in tokens or "c08" in tokens:
         click.secho(
             "C07 and C08 do not have any automated tests. Refer to the README for more information.",
             fg="yellow",
@@ -583,13 +619,13 @@ def get_current_assignment(repo_path: Path) -> AssignmentInfo | None:
     if config is None:
         return None
 
-    return _match_assignment_from_config(config, repo_path_str)
+    return _match_assignment_from_config(config, repo_name)
 
 
 def _match_assignment_from_config(
-    config: dict, repo_path_str: str
+    config: dict, repo_name: str
 ) -> AssignmentInfo | None:
-    """Match the repository path against the config to find the current assignment.
+    """Match the repository's folder name against the config to find the current assignment.
 
     This logic is necessary because there's no way to get the name of the current assignment without some
     external source of assignment names from the student's repo's root dir. This is because assignment names
@@ -606,33 +642,65 @@ def _match_assignment_from_config(
     1. The student's GitHub username.
     2. Names of valid assignments.
 
+    Matching is done on whole, hyphen/underscore-delimited tokens rather than
+    raw substrings, so a username like ``leshoutier`` can't be mistaken for
+    the assignment ``shout``. When more than one assignment's tokens are
+    found in the folder name (e.g. a username of ``shout-master`` on a
+    ``favorite-artist`` repo), the one whose tokens start closest to the
+    chapter marker wins, since GitHub Classroom always appends the username
+    as a trailing suffix -- the real assignment name can never start later in
+    the folder name than any part of the username.
+
     :param config: The parsed YAML configuration dictionary.
     :type config: dict
-    :param repo_path_str: The string representation of the repository path.
-    :type repo_path_str: str
+    :param repo_name: The repository's own folder name (not the full path).
+    :type repo_name: str
     :return: An AssignmentInfo named tuple if a match is found, None otherwise.
     :rtype: AssignmentInfo | None
     """
-    # Iterate through chapters in the config
+    tokens = _tokenize(repo_name)
+
+    # (start index, -token length, chapter_key, assignment) for every match,
+    # so sorting favors the earliest, then longest (most specific) match.
+    candidates = []
     for chapter_key, assignments in config.get("tests", {}).items():
         # Skip the tests_repo_url key
         if chapter_key == "tests_repo_url":
             continue
-        if chapter_key not in repo_path_str:
+        if chapter_key not in tokens:
             continue
+        chapter_idx = tokens.index(chapter_key)
         for assignment in assignments:
-            if assignment in repo_path_str.replace("-", "_"):
-                result = AssignmentInfo(
-                    chapter=str(chapter_key)[1:], name=str(assignment).replace("-", "_")
+            assignment_tokens = _tokenize(assignment)
+            for start in _find_subsequence_starts(tokens, assignment_tokens):
+                if start <= chapter_idx:
+                    continue  # the assignment name must follow the chapter marker
+                candidates.append(
+                    (start, -len(assignment_tokens), chapter_key, assignment)
                 )
-                logger.debug(f"Current assignment info: {result}")
-                return result
 
-    # No match found
-    logger.debug("Error parsing cwd and matching it against config. Contact your TA.")
-    logger.debug(f"Config: {config}")
-    logger.debug(f"Repo path: {repo_path_str}")
-    return None
+    if not candidates:
+        # No match found
+        logger.debug("Error parsing cwd and matching it against config. Contact your TA.")
+        logger.debug(f"Config: {config}")
+        logger.debug(f"Repo folder name: {repo_name}")
+        return None
+
+    candidates.sort()
+    distinct_matches = {(c[2], c[3]) for c in candidates}
+    if len(distinct_matches) > 1:
+        logger.warning(
+            f"Ambiguous assignment match for repo folder {repo_name!r}: "
+            f"{sorted(distinct_matches)}. Using the match closest to the "
+            f"chapter marker: {candidates[0][2:]}"
+        )
+
+    _, _, chapter_key, assignment = candidates[0]
+    result = AssignmentInfo(
+        chapter=str(chapter_key)[1:], name=str(assignment).replace("-", "_")
+    )
+    logger.debug(f"Current assignment info: {result}")
+    return result
 
 
 class RepositoryNotFound(Exception):
